@@ -9,6 +9,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 library.add(fas, far)
 
 import App from './App.vue'
+import { store } from './store/store'
 import { router } from "./router"
 
 import 'bootstrap/dist/css/bootstrap.css'
@@ -20,6 +21,7 @@ var app = createApp(App)
 
 app.use(router)
 app.use(BootstrapVue3)
+app.use(store)
 
 app.component("font-awesome-icon", FontAwesomeIcon)
 
