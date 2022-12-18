@@ -18,27 +18,43 @@
 		<b-modal size="lg" id="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="my-0">Enter a name for the new runner:</p>
-				<input class="mb-4" placeholder="Enter a name..."/><br>
+				<input v-model="newRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
 
 				<p class="my-0">Enter an id for the new runner:</p>
-				<input class="mb-4" placeholder="Enter an id..."/><br>
+				<input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br>
 
-				<select class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
+				<select v-model="newRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Select the class for the runner</option>
 					<option v-for="c in runner_data.classes" :key="c.name" :value="c.name">{{c.name}}</option>
 				</select>
 
 				<b-button id="closeModalButton" class="btn btn-secondary mx-2" v-b-modal.createRunnerModal>Cancel</b-button>
-				<button class="btn btn-outline-info" @click="deleteAppmnt">Create</button>
+				<button class="btn btn-outline-info" @click="createRunner">Create</button>
 			</div>
 		</b-modal>
 
 		<b-modal size="lg" id="createClassModal" class="text-secondary" centered hide-footer hide-header-close title="Create class" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p>Enter a name for the new class:</p>
-				<input class="mb-4" placeholder="Enter a name..."/><br>
+				<input v-model="newClassName" class="mb-4" placeholder="Enter a name..."/><br>
 				<b-button id="closeModalButton" class="btn btn-secondary mx-2" v-b-modal.createClassModal>Cancel</b-button>
-				<button class="btn btn-outline-info" @click="deleteAppmnt">Create</button>
+				<button class="btn btn-outline-info" @click="createClass">Create</button>
+			</div>
+		</b-modal>
+
+		<b-modal size="lg" id="deleteClassModal" class="text-secondary" centered hide-footer hide-header-close title="Delete class" header="test" header-class="justify-content-center">
+			<div class="modal-body text-center">
+				<p>Do you really want to delete the class? All of its members will be deleted with it.</p>
+				<b-button id="closeModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteClassModal>Cancel</b-button>
+				<button class="btn btn-outline-danger" @click="deleteAppmnt">Delete</button>
+			</div>
+		</b-modal>
+
+		<b-modal size="lg" id="deleteRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Delete runner" header="test" header-class="justify-content-center">
+			<div class="modal-body text-center">
+				<p>Do you really want to delete the runner?</p>
+				<b-button id="closeModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteRunnerModal>Cancel</b-button>
+				<button class="btn btn-outline-danger" @click="deleteAppmnt">Delete</button>
 			</div>
 		</b-modal>
 	</div>
@@ -55,7 +71,12 @@ export default {
 		return {
 			runner_data: {},
 			connection: null,
-			showCreateUser: false
+			showCreateUser: false,
+
+			newRunnerName: "",
+			newRunnerID: "",
+			newRunnerClass: "",
+			newClassName: ""
 		}
 	},
 	methods: {
@@ -71,6 +92,15 @@ export default {
 					this.runner_data.classes.push(data.data)
 					break
 			}
+		},
+		ws_send (header, d) {
+			this.connection?.send(JSON.stringify({header, data: d}))
+		},
+		createRunner() {
+			this.ws_send("add_runner", {name: this.newRunnerName, id: this.newRunnerID, class_name: this.newRunnerClass})
+		},
+		createClass() {
+			this.ws_send("add_class", {name: this.newClassName})
 		}
 	},
 	created () {

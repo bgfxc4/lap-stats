@@ -4,7 +4,9 @@
 			<div class="fw-bold">{{$props.runner.name}}</div>
 			{{$props.runner.class_name}}
 		</div>
-		<font-awesome-icon style="color: red; margin-top: 2px; margin-left: 7px" icon="trash-can" />
+		<b-button style="background: #0000; border: none" class="mt-0 pt-0" v-b-modal.deleteRunnerModal>
+			<font-awesome-icon style="color: red" icon="trash-can" />
+		</b-button>
 	</li>
 </template>
 
