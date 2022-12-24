@@ -8,11 +8,11 @@ const app = express.application
 const server = http.createServer(app)
 const wss = new WebSocket.Server({ server })
 
-interface Class {
+type Class = {
 	name: String
 }
 
-interface Runner {
+type Runner = {
 	id: String,
 	name: String,
 	laps: number[],
@@ -25,37 +25,8 @@ let data: {
 	classes: Class[],
 	start_time: number,
 } = {
-	runners: [
-		{
-			id: "1",
-			name: "Marc1",
-			laps: [],
-			best_time: Infinity,
-			last_lap_timestamp: null,
-			class_name: "JS2"
-		},
-		{
-			id: "2",
-			name: "Marc2",
-			laps: [],
-			best_time: Infinity,
-			last_lap_timestamp: null,
-			class_name: "JS1"
-		},
-		{
-			id: "3",
-			name: "Marc3",
-			laps: [],
-			best_time: Infinity,
-			last_lap_timestamp: null,
-			class_name: "10a"
-		}
-	],
-	classes: [
-		{ name: "JS2" },
-		{ name: "JS1" },
-		{ name: "10a" },
-	],
+	runners: [],
+	classes: [],
 	start_time: Date.now()
 }
 
@@ -92,6 +63,18 @@ wss.on('connection', (ws: WebSocket) => {
 					ws_send(w, "runner_lap", {id: d?.data?.id, timestamp: Date.now()})
 				})
 				break
+			case "delete_runner":
+				delete_runner(d?.data?.id)
+				wss.clients.forEach(w => {
+					ws_send(w, "delete_runner", {id: d?.data?.id})
+				})
+				break
+			case "delete_class":
+				delete_class(d?.data?.name)
+				wss.clients.forEach(w => {
+					ws_send(w, "delete_class", {name: d?.data?.name})
+				})
+				break
 			default:
 				ws_send(ws, "error", "You have to set a valid header!")
 				break
@@ -118,6 +101,15 @@ function add_class(name: String) {
 	data.classes.push({
 		name
 	})
+}
+
+function delete_runner(id: String) {
+	data.runners.splice(data.runners.findIndex(el => el.id == id), 1)
+}
+
+function delete_class(name: String) {
+	data.classes.splice(data.classes.findIndex(el => el.name == name), 1)
+	data.runners = data.runners.filter(el => el.class_name != name)
 }
 
 function add_lap_to_runner(id: String, timestamp: number) {
