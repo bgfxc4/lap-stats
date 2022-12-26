@@ -2,6 +2,10 @@ import * as express from 'express'
 import * as http from 'http'
 import * as WebSocket from 'ws'
 import { AddressInfo } from 'net'
+import * as fs from "fs"
+import {sha512} from "js-sha512"
+
+const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"))
 
 const app = express.application
 
@@ -33,7 +37,6 @@ let data: {
 wss.on('connection', (ws: WebSocket) => {
 	console.log("[ws] new connection")
 	ws.on("message", msg => {
-		console.log(msg)
 		try {
 			var d = JSON.parse(msg.toString())
 		} catch (err) {
@@ -41,7 +44,15 @@ wss.on('connection', (ws: WebSocket) => {
 			return ws_send(ws, "error", err)
 		}
 
+		if (sha512(d.login_hash || "") != config.login_hash) {
+			ws_send(ws, "error", "auth failed, wrong login hash")
+			return
+		}
+
 		switch(d.header) {
+			case "auth_test":
+				ws_send(ws, "auth_test", "ok")
+				break
 			case "add_runner":
 				add_runner(d.data.name, d.data.id, d.data.class_name)
 				wss.clients.forEach(w => {

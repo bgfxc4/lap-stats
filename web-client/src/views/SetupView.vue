@@ -59,20 +59,24 @@
 				<button class="btn btn-outline-danger" @click="deleteRunner">Delete</button>
 			</div>
 		</b-modal>
+
+		<auth-modal @auth="authFinished"/>
 	</div>
 </template>
 
 <script>
 import Class from '../components/setup/Class.vue'
 import Runner from '../components/setup/Runner.vue'
+import AuthModal from '../components/AuthModal.vue'
 
 export default {
-	components: { Class, Runner },
+	components: { Class, Runner, AuthModal },
 	name: "SetupView",
 	data () {
 		return {
 			runner_data: {},
 			connection: null,
+			connection_password: null,
 			showCreateUser: false,
 			soloClassName: null,
 
@@ -107,7 +111,7 @@ export default {
 			}
 		},
 		ws_send (header, d) {
-			this.connection?.send(JSON.stringify({header, data: d}))
+			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
 		},
 		createRunner() {
 			this.ws_send("add_runner", {name: this.newRunnerName, id: this.newRunnerID, class_name: this.newRunnerClass})
@@ -145,19 +149,18 @@ export default {
 					}
 				}
 			}
-		}
-	},
-	created () {
-		console.log("Starting connection to WebSocket Server")
-		this.connection = new WebSocket(this.$store.state.serverWsURL)
-		
-		this.connection.onmessage = event => {
-			this.compute_msg(JSON.parse(event.data))
-		}
+		},
+		authFinished (ws, pass) {
+			this.connection = ws
+			this.connection_password = pass
+			
+			this.connection.onmessage = event => {
+				console.log("new msg event")
+				console.log(JSON.parse(event.data))
+				this.compute_msg(JSON.parse(event.data))
+			}
 
-		this.connection.onopen = event => {
-			this.connection.send(JSON.stringify({header: "get_data"}))
-			console.log("Successfully connected to the echo websocket server")
+			this.ws_send("get_data", null)
 		}
 	}
 }
