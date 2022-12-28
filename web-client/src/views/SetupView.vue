@@ -10,9 +10,9 @@
 			</div>
 			<div id="runners">
 				<b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createRunnerModal>Create new runner</b-button>
-				<b-button @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="danger">debug sim school</b-button>
+				<b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
-					<runner @delete="id => deleteRunnerID = id" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
+					<runner @debugLap="sendDebugLap" @delete="id => deleteRunnerID = id" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
 			</div>
 		</div>
@@ -149,6 +149,9 @@ export default {
 					}
 				}
 			}
+		},
+		sendDebugLap(runnerID) {
+			this.ws_send("runner_lap", {id: runnerID})
 		},
 		authFinished (ws, pass) {
 			this.connection = ws

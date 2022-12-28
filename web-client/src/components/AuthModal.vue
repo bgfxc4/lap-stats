@@ -3,7 +3,7 @@
 		<div class="modal-body text-center">
 			<p class="text-danger">{{errorText}}</p>
 			<p>Enter the password to continue:</p>
-			<input v-model="password" type="password" placeholder="Enter the password ..."/>
+			<input v-model="password" type="password" placeholder="Enter the password ..." @keyup.enter="auth"/>
 			<b-button id="authModalButton" class="d-none" v-b-modal.authModal /><br>
 			<button class="btn btn-primary mt-3" @click="auth">Enter</button>
 		</div>
@@ -41,6 +41,12 @@ export default {
 						this.password = ""
 						this.errorText = "Wrong password. Try again."
 					}
+				case "error": {
+					if (msg.data == "auth failed, wrong login hash") {
+						this.password = ""
+						this.errorText = "Wrong password. Try again."
+					}
+				}
 				break
 			}
 		}

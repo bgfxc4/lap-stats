@@ -3,6 +3,7 @@ import { createStore } from 'vuex'
 export const store = createStore({
 	state: {
 		isLoading: false,
-		serverWsURL: "ws://localhost:8999"
+		serverWsURL: "ws://localhost:8999",
+		isDebug: true
 	}
 })
