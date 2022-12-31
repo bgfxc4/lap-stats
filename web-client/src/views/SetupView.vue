@@ -10,7 +10,10 @@
 			</div>
 			<div id="runners">
 				<b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createRunnerModal>Create new runner</b-button>
+				<b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" v-b-modal.startRaceModal>Start race</b-button>
+				<p v-else style="display: inline-block; float: right">{{ Math.round(raceRunningTime) }}</p>
 				<b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
+				<b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
 					<runner @debugLap="sendDebugLap" @delete="id => deleteRunnerID = id" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
@@ -19,6 +22,7 @@
 
 		<b-modal size="lg" id="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
 				<p class="my-0">Enter a name for the new runner:</p>
 				<input v-model="newRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
 
@@ -37,6 +41,7 @@
 
 		<b-modal size="lg" id="createClassModal" class="text-secondary" centered hide-footer hide-header-close title="Create class" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
 				<p>Enter a name for the new class:</p>
 				<input v-model="newClassName" class="mb-4" placeholder="Enter a name..."/><br>
 				<b-button id="createClassModalButton" class="btn btn-secondary mx-2" v-b-modal.createClassModal>Cancel</b-button>
@@ -46,6 +51,7 @@
 
 		<b-modal size="lg" id="deleteClassModal" class="text-secondary" centered hide-footer hide-header-close title="Delete class" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
 				<p>Do you really want to delete the class? All of its members will be deleted with it.</p>
 				<b-button id="deleteClassModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteClassModal>Cancel</b-button>
 				<button class="btn btn-outline-danger" @click="deleteClass">Delete</button>
@@ -54,9 +60,19 @@
 
 		<b-modal size="lg" id="deleteRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Delete runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
 				<p>Do you really want to delete the runner?</p>
 				<b-button id="deleteRunnerModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteRunnerModal>Cancel</b-button>
 				<button class="btn btn-outline-danger" @click="deleteRunner">Delete</button>
+			</div>
+		</b-modal>
+
+		<b-modal size="lg" id="startRaceModal" class="text-secondary" centered hide-footer hide-header-close title="Start race" header="test" header-class="justify-content-center">
+			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
+				<p>Do you really want to start the race?</p>
+				<b-button id="startRaceModalButton" class="btn btn-secondary mx-2" v-b-modal.startRaceModal>Cancel</b-button>
+				<button class="btn btn-success" @click="startRace">Start race</button>
 			</div>
 		</b-modal>
 
@@ -79,6 +95,9 @@ export default {
 			connection_password: null,
 			showCreateUser: false,
 			soloClassName: null,
+			errorText: null,
+			openModal: null, // stores name of open modal to close it when confirm_action gets send
+			raceRunningTime: null,
 
 			newRunnerName: "",
 			newRunnerID: "",
@@ -94,9 +113,12 @@ export default {
 			switch (data.header) {
 				case "all_data":
 					this.runner_data = data.data
+					if (this.runner_data.start_time != null)
+						this.startRaceTimeCounter()
 					break
 				case "new_runner":
 					this.runner_data.runners.push(data.data)
+					console.log(data.data)
 					break
 				case "new_class":
 					this.runner_data.classes.push(data.data)
@@ -108,6 +130,18 @@ export default {
 					this.runner_data.classes.splice(this.runner_data.classes.findIndex(el => el.name == data.data.name), 1)
 					this.runner_data.runners = this.runner_data.runners.filter(el => el.class_name != data.data.name)
 					break
+				case "start_race":
+					this.runner_data.start_time = data.data.timestamp
+					this.startRaceTimeCounter()
+					break
+				case "confirm_action":
+					$(`#${this.openModal}ModalButton`).click()
+					this.errorText = null
+					break
+				case "error":
+					console.error(data.data)
+					this.errorText = data.data
+					break
 			}
 		},
 		ws_send (header, d) {
@@ -118,22 +152,31 @@ export default {
 			this.newRunnerClass = ""
 			this.newRunnerID = ""
 			this.newRunnerName = ""
-			$("#createRunnerModalButton").click()
+			this.openModal = "createRunner"
 		},
 		createClass() {
 			this.ws_send("add_class", {name: this.newClassName})
 			this.newClassName  = ""
-			$("#createClassModalButton").click()
+			this.openModal = "createClass"
 		},
 		deleteRunner() {
 			this.ws_send("delete_runner", {id: this.deleteRunnerID})
 			this.deleteRunnerID = ""
-			$("#deleteRunnerModalButton").click()
+			this.openModal = "deleteRunner"
 		},
 		deleteClass() {
 			this.ws_send("delete_class", {name: this.deleteClassName})
 			this.deleteClassName = ""
-			$("#deleteClassModalButton").click()
+			this.openModal = "deleteClass"
+		},
+		startRace() {
+			this.ws_send("start_race", {})
+			this.openModal = "startRace"
+		},
+		startRaceTimeCounter() {
+			setInterval(() => {
+				this.raceRunningTime = (Date.now() - this.runner_data.start_time) / 1000 
+			}, 100)
 		},
 		debugCreateSchool() {
 			for (let i = 5; i <= 12; i++) {
@@ -150,7 +193,23 @@ export default {
 				}
 			}
 		},
+		debugCreateGroup() {
+			for (let i = 5; i <= 6; i++) {
+				for (let j = 0; j < 2; j++) {
+					this.newClassName = i + " " + ["a", "b"][j]
+					this.createClass()
+
+					for (let h = 0; h < 5; h++) {
+						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
+						this.newRunnerID = i + "" + j + "" + h
+						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
+						this.createRunner()
+					}
+				}
+			}
+		},
 		sendDebugLap(runnerID) {
+			this.openModal = null
 			this.ws_send("runner_lap", {id: runnerID})
 		},
 		authFinished (ws, pass) {
@@ -158,11 +217,8 @@ export default {
 			this.connection_password = pass
 			
 			this.connection.onmessage = event => {
-				console.log("new msg event")
-				console.log(JSON.parse(event.data))
 				this.compute_msg(JSON.parse(event.data))
 			}
-
 			this.ws_send("get_data", null)
 		}
 	}
