@@ -28,7 +28,7 @@ export default {
 			this.ws_send("auth_test")
 		},
 		ws_send (header, d) {
-			this.connection?.send(JSON.stringify({header, data: d, login_hash: sha512(this.password)}))
+			this.connection?.send(JSON.stringify({header, data: d, login_hash: sha512(this.password+":lap-stats")}))
 		},
 		compute_msg (msg) {
 			console.log(msg)
@@ -36,7 +36,7 @@ export default {
 				case "auth_test":
 					if (msg.data == "ok") {
 						$("#authModalButton").click()
-						this.$emit("auth", this.connection, sha512(this.password))
+						this.$emit("auth", this.connection, sha512(this.password+":lap-stats"))
 					} else {
 						this.password = ""
 						this.errorText = "Wrong password. Try again."
