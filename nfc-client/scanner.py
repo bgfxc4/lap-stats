@@ -3,7 +3,8 @@ import binascii
 import websocket
 import asyncio
 import rel
-	
+import math
+
 i2c = Pn532I2c(1)
 nfc = Pn532(i2c)
 
@@ -67,7 +68,7 @@ async def loop():
         print("UID Value: {}".format(binascii.hexlify(uid)))
 
         # websockets.broadcast(CLIENTS, binascii.hexlify(uid))
-        ws.send(binascii.hexlify(uid))
+        ws.send("{" + 'timestamp: {}, id: "{}", screen_name: "screen1"'.format(math.floor(time.time() * 1000), binascii.hexlify(uid)) + "}")
 
         # Wait 1 second before continuing
         await asyncio.sleep(1)
