@@ -4,11 +4,11 @@ import websocket
 import asyncio
 import rel
 import math
-
+import time
+import json
+	
 i2c = Pn532I2c(1)
 nfc = Pn532(i2c)
-
-ws = None
 
 CLIENTS = set()
 
@@ -29,10 +29,10 @@ def setup_nfc():
     nfc.setPassiveActivationRetries(0xFF)
     nfc.SAMConfig()
 
-def on_open():
+def on_open(a):
     print("websocket open")
 
-def on_error():
+def on_error(a, b):
     print("websocket error")
 
 def on_close():
@@ -41,22 +41,20 @@ def on_close():
 def on_message():
     print("websocket message")
 
-def main():
-    ws = websocket.WebSocketApp("wss://api.gemini.com/v1/marketdata/BTCUSD",
+async def main():
+    ws = websocket.WebSocketApp("ws://192.168.178.70:8999/scanners",
                                 on_open=on_open,
                                 on_message=on_message,
                                 on_error=on_error,
                                 on_close=on_close)
     ws.run_forever(dispatcher=rel, reconnect=5)
-    get_nfc_update()
-    #async with websockets.serve(handler, "0.0.0.0", 6666):
-    #    await asyncio.Future()
+    await get_nfc_update(ws)
 
-async def get_nfc_update():
+async def get_nfc_update(ws):
     while True:
-        await loop()
+        await loop(ws)
 
-async def loop():
+async def loop(ws):
     # Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
     # 'uid' will be populated with the UID, and uidLength will indicate
     # if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
@@ -68,7 +66,18 @@ async def loop():
         print("UID Value: {}".format(binascii.hexlify(uid)))
 
         # websockets.broadcast(CLIENTS, binascii.hexlify(uid))
-        ws.send("{" + 'timestamp: {}, id: "{}", screen_name: "screen1"'.format(math.floor(time.time() * 1000), binascii.hexlify(uid)) + "}")
+
+        data = {
+            "header": "tag_scanned",
+            "data": {
+                "timestamp": math.floor(time.time()*1000),
+                "id": binascii.hexlify(uid).decode("utf-8"),
+                "screen_name": "screen1",
+            }
+        }
+
+        ws.send(json.dumps(data))
+        print(json.dumps(data))
 
         # Wait 1 second before continuing
         await asyncio.sleep(1)
@@ -80,4 +89,4 @@ async def loop():
 
 if __name__ == '__main__':
     setup_nfc()
-    main()
+    asyncio.run(main())

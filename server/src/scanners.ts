@@ -41,7 +41,8 @@ function register_screenHandler(ws: WebSocket, d: any): boolean {
     }
     registered[d.data.name] = ws
     ws.on("close", () => {
-        delete registered[d.data.screen_name]
+        console.log("closing " + d.data.name)
+        delete registered[d.data.name]
     })
 	return true
 }
