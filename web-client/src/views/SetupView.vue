@@ -77,6 +77,7 @@
 		</b-modal>
 
 		<auth-modal @auth="authFinished"/>
+        <nfc-ws ref="nfcHandler" @detected="nfcDetected"/>
 	</div>
 </template>
 
@@ -84,9 +85,10 @@
 import Class from '../components/setup/Class.vue'
 import Runner from '../components/setup/Runner.vue'
 import AuthModal from '../components/AuthModal.vue'
+import NfcWs from '../components/NfcWs.vue'
 
 export default {
-	components: { Class, Runner, AuthModal },
+	components: { Class, Runner, AuthModal, NfcWs },
 	name: "SetupView",
 	data () {
 		return {
@@ -210,7 +212,8 @@ export default {
 		},
 		sendDebugLap(runnerID) {
 			this.openModal = null
-			this.ws_send("runner_lap", {id: runnerID})
+			// this.ws_send("runner_lap", {id: runnerID})
+            this.$refs.nfcHandler.simulate_tag_scanned(runnerID)
 		},
 		authFinished (ws, pass) {
 			this.connection = ws
@@ -220,7 +223,10 @@ export default {
 				this.compute_msg(JSON.parse(event.data))
 			}
 			this.ws_send("get_data", null)
-		}
+		},
+        nfcDetected(id) {
+            console.log("nfc: " + id)
+        }
 	}
 }
 </script>
