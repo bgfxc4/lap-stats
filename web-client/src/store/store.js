@@ -7,5 +7,10 @@ export const store = createStore({
 		scannerWsURL: "ws://localhost:8999/scanners",
 		instanceName: "screen1",
 		isDebug: true
-	}
+	},
+    mutations: {
+        setInstanceName (state, name) {
+            state.instanceName = name
+        }
+    }
 })

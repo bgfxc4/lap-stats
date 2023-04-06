@@ -7,17 +7,19 @@
 		</transition-group>
 		
 		<start-counter :raceRunningTime="Math.round(raceRunningTime)"></start-counter>
+        <nfc-ws ref="nfcHandler" @detected="nfcDetected"/>
 		<auth-modal @auth="authFinished"/>
 	</div>
 </template>
 
 <script>
 import AuthModal from '../components/AuthModal.vue'
+import NfcWs from '../components/NfcWs.vue'
 import StartCounter from '../components/home/StartCounter.vue'
 
 export default {
 	name: "HomeView",
-	components: { AuthModal, StartCounter },
+	components: { AuthModal, StartCounter, NfcWs },
 	data () {
 		return {
 			runner_data: {},
@@ -101,7 +103,12 @@ export default {
 				this.compute_msg(JSON.parse(event.data))
 			}
 			this.ws_send("get_data", null)
-		}
+            this.$refs.nfcHandler.openConnection()
+		},
+        nfcDetected(id) {
+            console.log("nfc: " + id)
+			this.ws_send("runner_lap", {id: id})
+        },
 	}
 }
 </script>

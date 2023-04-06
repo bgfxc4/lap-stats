@@ -36,7 +36,7 @@ export function handleCommand(ws: WebSocket, msg: WebSocket.RawData) {
 
 function register_screenHandler(ws: WebSocket, d: any): boolean {
     if (d.data.name in registered) {
-        ws_send(ws, "error", "Instance name does already exists!")
+        ws_send(ws, "error", "Instance name does already exist!")
         return false
     }
     registered[d.data.name] = ws

@@ -9,7 +9,7 @@
 				</ul>
 			</div>
 			<div id="runners">
-				<b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createRunnerModal>Create new runner</b-button>
+                <!-- <b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createRunnerModal>Create new runner</b-button> -->
 				<b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" v-b-modal.startRaceModal>Start race</b-button>
 				<p v-else style="display: inline-block; float: right">{{ Math.round(raceRunningTime) }}</p>
 				<b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
@@ -20,14 +20,15 @@
 			</div>
 		</div>
 
-		<b-modal size="lg" id="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
+		<b-modal size="lg" id="createRunnerModal" ref="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p class="my-0">Enter a name for the new runner:</p>
 				<input v-model="newRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
 
-				<p class="my-0">Enter an id for the new runner:</p>
-				<input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br>
+				<!-- <p class="my-0">Enter an id for the new runner:</p> -->
+				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
+                ID: {{newRunnerID}}
 
 				<select v-model="newRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Select the class for the runner</option>
@@ -78,6 +79,9 @@
 
 		<auth-modal @auth="authFinished"/>
         <nfc-ws ref="nfcHandler" @detected="nfcDetected"/>
+        <div style="position: absolute; left: 0; bottom: 0">
+            Instance: <template v-if="$store.state.instanceName">{{$store.state.instanceName}} </template><template v-else><p style="color: red; display: inline">none</p></template>
+        </div>
 	</div>
 </template>
 
@@ -105,6 +109,7 @@ export default {
 			newRunnerID: "",
 			newRunnerClass: "",
 			newClassName: "",
+            newRunnerModalOpen: false,
 
 			deleteRunnerID: "",
 			deleteClassName: ""
@@ -139,6 +144,8 @@ export default {
 				case "confirm_action":
 					$(`#${this.openModal}ModalButton`).click()
 					this.errorText = null
+                    if (this.openModal == "createRunner")
+                        this.newRunnerModalOpen = false
 					break
 				case "error":
 					console.error(data.data)
@@ -223,9 +230,15 @@ export default {
 				this.compute_msg(JSON.parse(event.data))
 			}
 			this.ws_send("get_data", null)
+            this.$refs.nfcHandler.openConnection()
 		},
         nfcDetected(id) {
-            console.log("nfc: " + id)
+            this.newRunnerID = id.id
+            if (this.newRunnerModalOpen)
+                return
+            $("#createRunnerModalButton").click()
+            this.newRunnerModalOpen = true
+            console.log("nfc: " + id.id)
         }
 	}
 }

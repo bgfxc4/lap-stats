@@ -2,7 +2,9 @@
 	<b-modal size="lg" id="authModal" class="text-secondary" centered hide-footer hide-header-close title="Authentification" header="test" header-class="justify-content-center">
 		<div class="modal-body text-center">
 			<p class="text-danger">{{errorText}}</p>
-			<p>Enter the password to continue:</p>
+			<label>(Optional) Enter a new instance name:</label><br/>
+			<input v-model="instanceName" type="text" placeholder="Enter an instance name..."/><br/>
+			<label class="mt-3">Enter the password to continue:</label><br/>
 			<input v-model="password" type="password" placeholder="Enter the password ..." @keyup.enter="auth"/>
 			<b-button id="authModalButton" class="d-none" v-b-modal.authModal /><br>
 			<button class="btn btn-primary mt-3" @click="auth">Enter</button>
@@ -19,12 +21,14 @@ export default {
 	data() {
 		return {
 			password: "",
+            instanceName: this.$store.state.instanceName,
 			connection: null,
 			errorText: ""
 		}
 	},
 	methods: {
 		auth () {
+            this.$store.commit("setInstanceName", this.instanceName)
 			this.ws_send("auth_test")
 		},
 		ws_send (header, d) {

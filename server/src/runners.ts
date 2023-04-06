@@ -2,6 +2,7 @@ import { ws_send, wss } from "./ws"
 import * as WebSocket from 'ws'
 import { config } from "../config"
 import {sha512} from "js-sha512"
+import { db } from "./db"
 
 type Class = {
 	name: String
@@ -15,22 +16,13 @@ type Runner = {
 	last_lap_timestamp: number | null,
 	class_name: String
 }
-let data: {
-	runners: Runner[],
-	classes: Class[],
-	start_time: number | null,
-} = {
-	runners: [],
-	classes: [],
-	start_time: null
-}
 
 const commandList: {
 	[key: string]: {
 		availableWhen: "raceStarted" | "always" | "setup",
 		requiresConfirm: boolean,
 		requiresAuth: boolean,
-		handler: (ws: WebSocket, d: any) => boolean
+		handler: (ws: WebSocket, d: any) => Promise<boolean>
 	}
 } = {
 	"auth_test": {availableWhen: "always", requiresConfirm: false, requiresAuth: true, handler: auth_testHandler},
@@ -45,7 +37,9 @@ const commandList: {
 	"runner_lap": {availableWhen: "raceStarted", requiresConfirm: true, requiresAuth: true, handler: runner_lapHandler},
 }
 
-export function handleCommand(ws: WebSocket, msg: WebSocket.RawData) {
+export async function handleCommand(ws: WebSocket, msg: WebSocket.RawData) {
+    let race_data = await (await db).get("SELECT * FROM race_data")
+
     try {
 		var d = JSON.parse(msg.toString())
     } catch (err) {
@@ -65,132 +59,131 @@ export function handleCommand(ws: WebSocket, msg: WebSocket.RawData) {
         return
     }
 
-    if (command.availableWhen == "setup" && data.start_time != null) {
+    if (command.availableWhen == "setup" && race_data.start_time != null) {
         ws_send(ws, "error", "this command is currently not available, because the race already started")
         return
-    } else if (command.availableWhen == "raceStarted" && (data.start_time == null || data.start_time > Date.now())) { // race did not start yet or is still in the countdown (data.start_time > Date.now())
+    } else if (command.availableWhen == "raceStarted" && (race_data.start_time == null || race_data.start_time > Date.now())) { // race did not start yet or is still in the countdown (data.start_time > Date.now())
         ws_send(ws, "error", "this command is currently not available, because the race did not start yet")
         return
     }
 
-    let ret = command.handler(ws, d)
+    let ret = command.handler(ws, d).catch(err => {
+        console.error(err)
+        ws_send(ws, "error", err)
+    })
 
     if (command.requiresConfirm && ret)
         ws_send(ws, "confirm_action", d.header)
 }
 
-function auth_testHandler(ws: WebSocket, d: any): boolean {
+async function auth_testHandler(ws: WebSocket, d: any): Promise<boolean> {
 	ws_send(ws, "auth_test", "ok")
 	return true
 }
 
-function add_runnerHandler(ws: WebSocket, d: any): boolean {
-	if (data.runners.findIndex(el => el.id == d.data.id) != -1) {
-		ws_send(ws, "error", "a user with this id exists already")
-		return false
-	}
-	if (data.classes.findIndex(el => el.name == d.data.class_name) == -1) {
-		ws_send(ws, "error", "the class you provided does not exist")
-		return false
-	}
-	add_runner(d.data.name, d.data.id, d.data.class_name)
-	wss.clients.forEach(w => {
-		ws_send(w, "new_runner", {id: d.data.id, name: d.data.name, class_name: d.data.class_name})
-	})
-	return true
+async function add_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
+	return await add_runner(d.data.name, d.data.id, d.data.class_name).then(() => {
+        wss.clients.forEach(w => {
+            ws_send(w, "new_runner", {id: d.data.id, name: d.data.name, class_name: d.data.class_name})
+        })
+        return true
+    })
 }
 
-function add_classHandler(ws: WebSocket, d: any): boolean {
-	if (data.classes.findIndex(el => el.name == d.data.name) != -1) {
-		ws_send(ws, "error", "a class with this name exists already")
-		return false
-	}
-	add_class(d.data.name)
+async function add_classHandler(ws: WebSocket, d: any): Promise<boolean> {
+	await add_class(d.data.name)
 	wss.clients.forEach(w => {
 		ws_send(w, "new_class", {name: d.data.name})
 	})
 	return true
 }
 
-function get_dataHandler(ws: WebSocket, d: any): boolean {
-	ws_send(ws, "all_data", data)
+async function get_dataHandler(ws: WebSocket, d: any): Promise<boolean> {
+	ws_send(ws, "all_data", await get_data())
 	return true
 }
 
-function runner_lapHandler(ws: WebSocket, d: any): boolean {
-	if (data.runners.findIndex(el => el.id == d.data.id) == -1) {
-		ws_send(ws, "error", "a user with this id does not exist")
-		return false
-	}
-	add_lap_to_runner(d?.data?.id, Date.now())
+async function runner_lapHandler(ws: WebSocket, d: any): Promise<boolean> {
+	await add_lap_to_runner(d?.data?.id, Date.now())
 	wss.clients.forEach(w => {
 		ws_send(w, "runner_lap", {id: d?.data?.id, timestamp: Date.now()})
 	})
 	return true
 }
 
-function delete_runnerHandler(ws: WebSocket, d: any): boolean {
-	if (data.runners.findIndex(el => el.id == d.data.id) == -1) {
-		ws_send(ws, "error", "a user with this id does not exist")
-		return false
-	}
-	delete_runner(d?.data?.id)
+async function delete_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
+	await delete_runner(d?.data?.id)
 	wss.clients.forEach(w => {
 		ws_send(w, "delete_runner", {id: d?.data?.id})
 	})
 	return true
 }
 
-function delete_classHandler(ws: WebSocket, d: any): boolean {
-	if (data.classes.findIndex(el => el.name == d.data.name) == -1) {
-		ws_send(ws, "error", "a class with this name does not exist")
-		return false
-	}
-	delete_class(d?.data?.name)
+async function delete_classHandler(ws: WebSocket, d: any): Promise<boolean> {
+	await delete_class(d?.data?.name)
 	wss.clients.forEach(w => {
 		ws_send(w, "delete_class", {name: d?.data?.name})
 	})
 	return true
 }
 
-function start_raceHandler(_: WebSocket, d: any): boolean {
-	data.start_time = Date.now() + 1000 * config.race_time_startup_secs
+async function start_raceHandler(_: WebSocket, d: any): Promise<boolean> {
+	let start_time = Date.now() + 1000 * config.race_time_startup_secs
+    await (await db).run("UPDATE race_data SET start_time = $start_time", {$start_time: start_time})
 	wss.clients.forEach(w => {
-		ws_send(w, "start_race", {timestamp: data.start_time})
+		ws_send(w, "start_race", {timestamp: start_time})
 	})
 	return true
 }
 
-function add_runner(name: String, id: String, class_name: String) {
-	data.runners.push({
-		name,
-		id,
-		laps: [],
-		best_time: Infinity,
-		last_lap_timestamp: null,
-		class_name: class_name 
-	})
+async function add_runner(name: String, id: String, class_name: String) {
+    await (await db).run("INSERT INTO runners (name, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $id, $best_time, $last_lap_timestamp, $class_name)", {
+		$name: name,
+		$id: id,
+		$best_time: Infinity,
+		$last_lap_timestamp: null,
+		$class_name: class_name 
+    })
 }
 
-function add_class(name: String) {
-	data.classes.push({
-		name
-	})
+async function add_class(name: String) {
+    await (await db).run("INSERT INTO classes (name) VALUES ($name)", {
+		$name: name
+    })
 }
 
-function delete_runner(id: String) {
-	data.runners.splice(data.runners.findIndex(el => el.id == id), 1)
+async function delete_runner(id: String) {
+    await (await db).run("DELETE FROM runners WHERE id = $id", {
+		$id: id
+    })
 }
 
-function delete_class(name: String) {
-	data.classes.splice(data.classes.findIndex(el => el.name == name), 1)
-	data.runners = data.runners.filter(el => el.class_name != name)
+async function delete_class(name: String) {
+    await (await db).run("DELETE FROM classes WHERE name = $name", {
+		$name: name
+    })
 }
 
-function add_lap_to_runner(id: String, timestamp: number) {
-	let r_idx = data.runners.findIndex(el => el.id == id)
-	let lap_time = timestamp - (data.runners[r_idx].last_lap_timestamp || (data.start_time as number))
-	data.runners[r_idx].laps.push(lap_time)
-	data.runners[r_idx].last_lap_timestamp = timestamp
-	if (lap_time < data.runners[r_idx].best_time) data.runners[r_idx].best_time = lap_time
+async function add_lap_to_runner(id: String, timestamp: number) {
+    let runner = await (await db).get("SELECT * FROM runners WHERE id = $id", {$id: id})
+    let race_data = await (await db).get("SELECT * FROM race_data")
+	let lap_time = timestamp - (runner.last_lap_timestamp || (race_data.start_time as number))
+    await (await db).run("INSERT INTO laps (runner_id, time) VALUES ($runner_id, $time)", {$runner_id: id, $time: lap_time})
+	if (lap_time < runner.best_time) {
+        await (await db).run("UPDATE best_time = $best_time, last_lap_timestamp = $timestamp runners SET WHERE id = :id", {$id: id, $best_time: lap_time, $timestamp: timestamp})
+    } else {
+        await (await db).run("UPDATE last_lap_timestamp = $timestamp runners SET WHERE id = $id", {$id: id, $timestamp: timestamp})
+    }
+}
+
+async function get_data () {
+    let race_data = await (await db).get("SELECT * FROM race_data")
+    let runners = await (await db).all("SELECT * FROM runners")
+    let classes = await (await db).all("SELECT * FROM classes")
+
+    return {
+        runners,
+        classes,
+        start_time: race_data.start_time
+    }
 }

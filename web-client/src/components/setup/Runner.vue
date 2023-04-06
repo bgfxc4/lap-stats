@@ -1,7 +1,7 @@
 <template>
 	<li class="list-group-item d-flex justify-content-between align-items-start" :class="{'d-none': $props.soloClassName != null && $props.soloClassName != runner.class_name}">
 		<div class="ms-2 me-auto">
-			<div class="fw-bold">{{$props.runner.name}}</div>
+			<div class="fw-bold">{{$props.runner.name}} ({{$props.runner.id}})</div>
 			{{$props.runner.class_name}}
 		</div>
 
