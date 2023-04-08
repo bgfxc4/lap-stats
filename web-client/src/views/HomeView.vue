@@ -1,10 +1,43 @@
 <template>
-	<div id="HomeView">
-		<transition-group name="flip-list" tag="ol">
-			<li v-for="runner in showRunners" :key="runner.id">
-				{{ runner.name }} {{ runner.id }} - {{ runner.laps.length }}
-			</li>
-		</transition-group>
+	<div id="HomeView" style="width: 100%; height: 100%; padding: 2%">
+        <div class="container" style="height: 100%">
+            <div class="row" style="height: 100%;">
+                <div class="col-7" style="height: 100%">
+                    <div class="container" style="height: 100%">
+                        <div class="row" style="height: 50%">
+                            <div class="col-5">
+                                <div class="panel" style="height: calc(100% - 1.5rem)">
+                                    duration
+                                </div>
+                            </div>
+                            <div class="col-7">
+                                <div class="panel" style="height: calc(100% - 1.5rem)">
+                                    total stats
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" style="height: 50%">
+                            <div class="col-12 panel">
+                                scans
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-5" style="height: 100%">
+                    <div style="height: calc(70% - 1.5rem)" class="panel">
+                        runners
+                        <transition-group name="flip-list" tag="ol">
+                        	<li v-for="runner in showRunners" :key="runner.id">
+                        		{{ runner.name }} {{ runner.id }} - {{ runner.laps.length }}
+                        	</li>
+                        </transition-group>
+                    </div>
+                    <div style="height: 30%; margin-top: 1.5rem" class="panel">
+                        classes
+                    </div>
+                </div>
+            </div>
+        </div>
 		
 		<start-counter :raceRunningTime="Math.round(raceRunningTime)"></start-counter>
         <nfc-ws ref="nfcHandler" @detected="nfcDetected"/>
@@ -33,10 +66,10 @@ export default {
 	},
 	methods: {
 		compute_msg (data) {
-	    	console.log(data)
 			switch (data.header) {
 				case "all_data":
 					this.runner_data = data.data
+					this.runner_data.runners = data.data.runners.map(el => {el.laps = JSON.parse(el.laps); return el})
 					this.runnerDataToShowRunners()
 					if (this.runner_data.start_time != null)
 						this.startRaceTimeCounter()
@@ -105,9 +138,9 @@ export default {
 			this.ws_send("get_data", null)
             this.$refs.nfcHandler.openConnection()
 		},
-        nfcDetected(id) {
-            console.log("nfc: " + id)
-			this.ws_send("runner_lap", {id: id})
+        nfcDetected(data) {
+            console.log("nfc: " + data.id)
+			this.ws_send("runner_lap", {id: data.id})
         },
 	}
 }
@@ -116,5 +149,23 @@ export default {
 <style>
 .flip-list-move {
 	transition: transform 1s;
+}
+
+.panel {
+    background-color: var(--bs-gray-dark);
+    border-radius: 20px;
+}
+
+#app {
+    height: 100svh;
+    padding: 0;
+    margin: 0;
+    border: none;
+}
+
+#HomeView div.container {
+    margin-left: 0;
+    margin-right: 0;
+    max-width: 100%;
 }
 </style>

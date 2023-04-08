@@ -2,18 +2,21 @@
 	<div id="SetupView">
 		<div id="show-existing" style="height: 100vh">
 			<div id="classes">
-				<b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createClassModal>Create new class</b-button>
-				<ul class="list-group" style="height: 94%; overflow-y: auto">
+                <div style="display: inline-block">
+                    <b-button style="height: 4%; margin-bottom: 1%; margin-top: 4%; margin-left: 5px; float: right" btn variant="primary" v-b-modal.createClassModal>Create new class</b-button>
+                </div>
+				<ul class="list-group" style="height: 93%; overflow-y: auto">
 					<class :soloClassName="soloClassName" @isolate="name => soloClassName == name ? soloClassName = null : soloClassName = name" @delete="name => deleteClassName = name" 
 						v-for="c in runner_data.classes" :key="c?.name" :name="c.name" :runnerCount="runner_data.runners.filter(el => el.class_name == c.name).length"/>
 				</ul>
 			</div>
 			<div id="runners">
-                <!-- <b-button style="height: 4%; margin-bottom: 1%; margin-top: 1%" btn variant="primary" v-b-modal.createRunnerModal>Create new runner</b-button> -->
-				<b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" v-b-modal.startRaceModal>Start race</b-button>
-				<p v-else style="display: inline-block; float: right">{{ Math.round(raceRunningTime) }}</p>
-				<b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
-				<b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
+                <div style="display: inline-block; ">
+                    <b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" v-b-modal.startRaceModal>Start race</b-button>
+                    <p v-else style="display: inline-block; float: right">{{ Math.round(raceRunningTime) }}</p>
+                    <b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
+                    <b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
+                </div>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
 					<runner @debugLap="sendDebugLap" @delete="id => deleteRunnerID = id" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
@@ -125,7 +128,6 @@ export default {
 					break
 				case "new_runner":
 					this.runner_data.runners.push(data.data)
-					console.log(data.data)
 					break
 				case "new_class":
 					this.runner_data.classes.push(data.data)
@@ -187,11 +189,12 @@ export default {
 				this.raceRunningTime = (Date.now() - this.runner_data.start_time) / 1000 
 			}, 100)
 		},
-		debugCreateSchool() {
+		async debugCreateSchool() {
 			for (let i = 5; i <= 12; i++) {
 				for (let j = 0; j < 4; j++) {
 					this.newClassName = i + " " + ["a", "b", "c", "d"][j]
 					this.createClass()
+                    await new Promise(r => setTimeout(r, 200))
 
 					for (let h = 0; h < 30; h++) {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
@@ -202,11 +205,12 @@ export default {
 				}
 			}
 		},
-		debugCreateGroup() {
+		async debugCreateGroup() {
 			for (let i = 5; i <= 6; i++) {
 				for (let j = 0; j < 2; j++) {
 					this.newClassName = i + " " + ["a", "b"][j]
 					this.createClass()
+                    await new Promise(r => setTimeout(r, 200))
 
 					for (let h = 0; h < 5; h++) {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
@@ -253,13 +257,13 @@ export default {
 	position: absolute;
 	height: 100%;
 	left: 2%;
-	width: 20%;
+	width: 23%;
 }
 
 #runners {
 	position: absolute;
 	height: 100%;
-	right: 2%;
-	width: 70%;
+	right: 0;
+	width: 73%;
 }
 </style>

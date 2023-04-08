@@ -31,7 +31,8 @@ export default {
         simulate_tag_scanned (id) {
             if (!this.$store.state.instanceName)
                 return
-            this.ws_send("tag_scanned", {screen_name: this.$store.state.instanceName, timestamp: Date.now(), id: id})
+            // this.ws_send("tag_scanned", {screen_name: this.$store.state.instanceName, timestamp: Date.now(), id: id})
+            this.ws_send("tag_scanned", {screen_name: "screen2", timestamp: Date.now(), id: id})
         },
         openConnection () {
             this.socket = new WebSocket(this.$store.state.scannerWsURL)

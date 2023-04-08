@@ -170,15 +170,15 @@ async function add_lap_to_runner(id: String, timestamp: number) {
 	let lap_time = timestamp - (runner.last_lap_timestamp || (race_data.start_time as number))
     await (await db).run("INSERT INTO laps (runner_id, time) VALUES ($runner_id, $time)", {$runner_id: id, $time: lap_time})
 	if (lap_time < runner.best_time) {
-        await (await db).run("UPDATE best_time = $best_time, last_lap_timestamp = $timestamp runners SET WHERE id = :id", {$id: id, $best_time: lap_time, $timestamp: timestamp})
+        await (await db).run("UPDATE runners SET best_time = $best_time, last_lap_timestamp = $timestamp WHERE id = $id", {$id: id, $best_time: lap_time, $timestamp: timestamp})
     } else {
-        await (await db).run("UPDATE last_lap_timestamp = $timestamp runners SET WHERE id = $id", {$id: id, $timestamp: timestamp})
+        await (await db).run("UPDATE runners SET last_lap_timestamp = $timestamp WHERE id = $id", {$id: id, $timestamp: timestamp})
     }
 }
 
 async function get_data () {
     let race_data = await (await db).get("SELECT * FROM race_data")
-    let runners = await (await db).all("SELECT * FROM runners")
+    let runners = await (await db).all("SELECT *, (SELECT json_group_array ( time ) FROM laps WHERE runner_id = id) AS laps FROM runners;")
     let classes = await (await db).all("SELECT * FROM classes")
 
     return {
