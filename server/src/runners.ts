@@ -169,7 +169,7 @@ async function add_lap_to_runner(id: String, timestamp: number) {
     let race_data = await (await db).get("SELECT * FROM race_data")
 	let lap_time = timestamp - (runner.last_lap_timestamp || (race_data.start_time as number))
     await (await db).run("INSERT INTO laps (runner_id, time) VALUES ($runner_id, $time)", {$runner_id: id, $time: lap_time})
-	if (lap_time < runner.best_time) {
+	if (lap_time < (runner.best_time || Infinity)) {
         await (await db).run("UPDATE runners SET best_time = $best_time, last_lap_timestamp = $timestamp WHERE id = $id", {$id: id, $best_time: lap_time, $timestamp: timestamp})
     } else {
         await (await db).run("UPDATE runners SET last_lap_timestamp = $timestamp WHERE id = $id", {$id: id, $timestamp: timestamp})

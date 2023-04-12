@@ -6,8 +6,8 @@
                     <div class="container" style="height: 100%">
                         <div class="row" style="height: 50%">
                             <div class="col-5">
-                                <div class="panel" style="height: calc(100% - 1.5rem)">
-                                    duration
+                                <div class="panel" style="height: calc(100% - 1.5rem); font-size: 5svw; text-align: center; font-weight: bold;">
+                                    {{raceRunningTime ? formatMillis(raceRunningTime) : "Not started yet"}}
                                 </div>
                             </div>
                             <div class="col-7">
@@ -25,11 +25,12 @@
                 </div>
                 <div class="col-5" style="height: 100%">
                     <div style="height: calc(70% - 1.5rem)" class="panel">
-                        runners
-                        <transition-group name="flip-list" tag="ol">
-                        	<li v-for="runner in showRunners" :key="runner.id">
-                        		{{ runner.name }} {{ runner.id }} - {{ runner.laps.length }}
-                        	</li>
+                        <transition-group name="flip-list">
+                            <div v-for="(runner, idx) in showRunners" :key="runner.id" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
+                                {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ runner.name }}</p> <p style="font-weight: lighter; margin: 0; display: inline">{{ runner.id }}</p><br>
+                                <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ runner.laps.length }}</p> laps
+                                <p style="float: right; display: inline; margin: 0;"> <p> {{ runnerLapsCmpToAverage(runner) }} </p> than average </p>
+                            </div>
                         </transition-group>
                     </div>
                     <div style="height: 30%; margin-top: 1.5rem" class="panel">
@@ -115,7 +116,7 @@ export default {
 			let lapTime = timestamp - (this.runner_data.runners[rIdx].last_lap_timestamp || this.runner_data.start_time)
 			this.runner_data.runners[rIdx].laps.push(lapTime)
 			this.runner_data.runners[rIdx].last_lap_timestamp = timestamp
-			if (lapTime < this.runner_data.runners[rIdx].best_time) this.runner_data.runners[rIdx].best_time = lapTime
+			if (lapTime < (this.runner_data.runners[rIdx].best_time || Infinity)) this.runner_data.runners[rIdx].best_time = lapTime
 		},
 		runnerDataToShowRunners() {
 			this.showRunners = this.runner_data.runners.sort((a, b) => b.laps.length - a.laps.length)
@@ -142,6 +143,23 @@ export default {
             console.log("nfc: " + data.id)
 			this.ws_send("runner_lap", {id: data.id})
         },
+        formatMillis (ms) {
+            if (ms < 0) ms = -ms;
+            const time = {
+                h: Math.floor(ms / 3600),
+                mins: Math.floor(ms / 60) % 60,
+                s: Math.floor(ms) % 60,
+            };
+            return Object.entries(time)
+                .map(val => val[1] + (val[1] !== 1 ? val[0] : val[0]))
+                .join(' ');
+        },
+        runnerLapsCmpToAverage (runner) {
+            let average = this.runner_data.runners.reduce((a, b) => a + b.laps.length, 0) / this.runner_data.runners.length
+            let diff = Math.abs(average - runner.laps.length)
+            let percent = Math.round((diff / runner.laps.length) * 100)
+            return `${percent}% ${percent >= 0 ? 'more' : 'less'}`
+        }
 	}
 }
 </script>
@@ -154,6 +172,7 @@ export default {
 .panel {
     background-color: var(--bs-gray-dark);
     border-radius: 20px;
+    overflow: hidden;
 }
 
 #app {
