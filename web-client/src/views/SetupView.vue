@@ -3,27 +3,27 @@
 		<div id="show-existing" style="height: 100vh">
 			<div id="classes">
                 <div style="display: inline-block">
-                    <b-button style="height: 4%; margin-bottom: 1%; margin-top: 4%; margin-left: 5px; float: right" btn variant="primary" v-b-modal.createClassModal>Create new class</b-button>
+                    <b-button style="height: 4%; margin-bottom: 1%; margin-top: 4%; margin-left: 5px; float: right" btn variant="primary" @click="createClassModal = true">Create new class</b-button>
                 </div>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
-					<class :soloClassName="soloClassName" @isolate="name => soloClassName == name ? soloClassName = null : soloClassName = name" @delete="name => deleteClassName = name" 
+					<class :soloClassName="soloClassName" @isolate="name => soloClassName == name ? soloClassName = null : soloClassName = name" @delete="name => {deleteClassName = name; deleteClassModal = true}" 
 						v-for="c in runner_data.classes" :key="c?.name" :name="c.name" :runnerCount="runner_data.runners.filter(el => el.class_name == c.name).length"/>
 				</ul>
 			</div>
 			<div id="runners">
                 <div style="display: inline-block; ">
-                    <b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" v-b-modal.startRaceModal>Start race</b-button>
+                    <b-button v-if="runner_data.start_time == null" style="height: 4%; margin-bottom: 1%; margin-top: 1%; margin-left: 5px; float: right" btn variant="success" @click="startRaceModal = true">Start race</b-button>
                     <p v-else style="display: inline-block; float: right">{{ Math.round(raceRunningTime) }}</p>
                     <b-button v-if="$store.state.isDebug" @click="debugCreateSchool()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug sim school</b-button>
                     <b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
                 </div>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
-					<runner @debugLap="sendDebugLap" @delete="id => deleteRunnerID = id" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
+					<runner @debugLap="sendDebugLap" @delete="id => {deleteRunnerID = id; deleteRunnerModal = true}" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
 			</div>
 		</div>
 
-		<b-modal size="lg" id="createRunnerModal" ref="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
+		<b-modal size="lg" v-model="createRunnerModal" ref="createRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Create runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p class="my-0">Enter a name for the new runner:</p>
@@ -33,49 +33,52 @@
 				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
                 ID: {{newRunnerID}}
 
+				<p class="my-0">Enter the sponsored amount of money per lap in €:</p>
+				<input v-model="newRunnerSponsorMoney" type="number" class="mb-4" placeholder="Enter a value..."/><br>
+
 				<select v-model="newRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Select the class for the runner</option>
 					<option v-for="c in runner_data.classes" :key="c.name" :value="c.name">{{c.name}}</option>
 				</select>
 
-				<b-button id="createRunnerModalButton" class="btn btn-secondary mx-2" v-b-modal.createRunnerModal>Cancel</b-button>
+				<b-button id="createRunnerModalButton" class="btn btn-secondary mx-2" @click="createRunnerModal = false">Cancel</b-button>
 				<button class="btn btn-outline-info" @click="createRunner">Create</button>
 			</div>
 		</b-modal>
 
-		<b-modal size="lg" id="createClassModal" class="text-secondary" centered hide-footer hide-header-close title="Create class" header="test" header-class="justify-content-center">
+		<b-modal size="lg" v-model="createClassModal" class="text-secondary" centered hide-footer hide-header-close title="Create class" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p>Enter a name for the new class:</p>
 				<input v-model="newClassName" class="mb-4" placeholder="Enter a name..."/><br>
-				<b-button id="createClassModalButton" class="btn btn-secondary mx-2" v-b-modal.createClassModal>Cancel</b-button>
+				<b-button id="createClassModalButton" class="btn btn-secondary mx-2" @click="createClassModal = false">Cancel</b-button>
 				<button class="btn btn-outline-info" @click="createClass">Create</button>
 			</div>
 		</b-modal>
 
-		<b-modal size="lg" id="deleteClassModal" class="text-secondary" centered hide-footer hide-header-close title="Delete class" header="test" header-class="justify-content-center">
+		<b-modal size="lg" v-model="deleteClassModal" class="text-secondary" centered hide-footer hide-header-close title="Delete class" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p>Do you really want to delete the class? All of its members will be deleted with it.</p>
-				<b-button id="deleteClassModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteClassModal>Cancel</b-button>
+				<b-button id="deleteClassModalButton" class="btn btn-secondary mx-2" @click="deleteClassModal = false">Cancel</b-button>
 				<button class="btn btn-outline-danger" @click="deleteClass">Delete</button>
 			</div>
 		</b-modal>
 
-		<b-modal size="lg" id="deleteRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Delete runner" header="test" header-class="justify-content-center">
+		<b-modal size="lg" v-model="deleteRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Delete runner" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p>Do you really want to delete the runner?</p>
-				<b-button id="deleteRunnerModalButton" class="btn btn-secondary mx-2" v-b-modal.deleteRunnerModal>Cancel</b-button>
+				<b-button id="deleteRunnerModalButton" class="btn btn-secondary mx-2" @click="deleteRunnerModal = false">Cancel</b-button>
 				<button class="btn btn-outline-danger" @click="deleteRunner">Delete</button>
 			</div>
 		</b-modal>
 
-		<b-modal size="lg" id="startRaceModal" class="text-secondary" centered hide-footer hide-header-close title="Start race" header="test" header-class="justify-content-center">
+		<b-modal size="lg" v-model="startRaceModal" class="text-secondary" centered hide-footer hide-header-close title="Start race" header="test" header-class="justify-content-center">
 			<div class="modal-body text-center">
 				<p class="text-danger">{{errorText}}</p>
 				<p>Do you really want to start the race?</p>
-				<b-button id="startRaceModalButton" class="btn btn-secondary mx-2" v-b-modal.startRaceModal>Cancel</b-button>
+				<b-button id="startRaceModalButton" class="btn btn-secondary mx-2" @click="startRaceModal = false">Cancel</b-button>
 				<button class="btn btn-success" @click="startRace">Start race</button>
 			</div>
 		</b-modal>
@@ -109,13 +112,19 @@ export default {
 			raceRunningTime: null,
 
 			newRunnerName: "",
+			newRunnerSponsorMoney: "",
 			newRunnerID: "",
 			newRunnerClass: "",
 			newClassName: "",
-            newRunnerModalOpen: false,
 
 			deleteRunnerID: "",
-			deleteClassName: ""
+			deleteClassName: "",
+
+            startRaceModal: false,
+            createRunnerModal: false,
+            createClassModal: false,
+            deleteRunnerModal: false,
+            deleteClassModal: false,
 		}
 	},
 	methods: {
@@ -144,10 +153,8 @@ export default {
 					this.startRaceTimeCounter()
 					break
 				case "confirm_action":
-					$(`#${this.openModal}ModalButton`).click()
+                    this[this.openModal+"Modal"] = false
 					this.errorText = null
-                    if (this.openModal == "createRunner")
-                        this.newRunnerModalOpen = false
 					break
 				case "error":
 					console.error(data.data)
@@ -159,10 +166,11 @@ export default {
 			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
 		},
 		createRunner() {
-			this.ws_send("add_runner", {name: this.newRunnerName, id: this.newRunnerID, class_name: this.newRunnerClass})
+			this.ws_send("add_runner", {name: this.newRunnerName, sponsor_money: this.newRunnerSponsorMoney, id: this.newRunnerID, class_name: this.newRunnerClass})
 			this.newRunnerClass = ""
 			this.newRunnerID = ""
 			this.newRunnerName = ""
+			this.newRunnerSponsorMoney = ""
 			this.openModal = "createRunner"
 		},
 		createClass() {
@@ -200,6 +208,7 @@ export default {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
 						this.newRunnerID = i + "" + j + "" + h
 						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
+                        this.newRunnerSponsorMoney = Math.floor(Math.random() * 10)
 						this.createRunner()
 					}
 				}
@@ -216,6 +225,7 @@ export default {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
 						this.newRunnerID = i + "" + j + "" + h
 						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
+                        this.newRunnerSponsorMoney = Math.floor(Math.random() * 10)
 						this.createRunner()
 					}
 				}
@@ -238,10 +248,7 @@ export default {
 		},
         nfcDetected(id) {
             this.newRunnerID = id.id
-            if (this.newRunnerModalOpen)
-                return
-            $("#createRunnerModalButton").click()
-            this.newRunnerModalOpen = true
+            this.createRunnerModal = true
             console.log("nfc: " + id.id)
         }
 	}

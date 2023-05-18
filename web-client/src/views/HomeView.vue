@@ -29,7 +29,7 @@
                             <div v-for="(runner, idx) in showRunners" :key="runner.id" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
                                 {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ runner.name }}</p> <p style="font-weight: lighter; margin: 0; display: inline">{{ runner.id }}</p><br>
                                 <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ runner.laps.length }}</p> laps
-                                <p style="float: right; display: inline; margin: 0;"> <p> {{ runnerLapsCmpToAverage(runner) }} </p> than average </p>
+                                <p style="float: right; display: inline; margin: 0;"> <span class="text-success" :class="{'text-danger': (runner.cmpToAvg < 0) }"> {{ `${runner.cmpToAvg >= 0 ? '+' : ''}${runner.cmpToAvg}%`}} </span> </p>
                             </div>
                         </transition-group>
                     </div>
@@ -120,6 +120,11 @@ export default {
 		},
 		runnerDataToShowRunners() {
 			this.showRunners = this.runner_data.runners.sort((a, b) => b.laps.length - a.laps.length)
+
+            let average = this.runner_data.runners.reduce((a, b) => a + b.laps.length, 0) / this.runner_data.runners.length
+            for (let r of this.showRunners) {
+                r.cmpToAvg = this.runnerLapsCmpToAverage(r, average)
+            }
 		},
 		ws_send (header, d) {
 			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
@@ -154,11 +159,11 @@ export default {
                 .map(val => val[1] + (val[1] !== 1 ? val[0] : val[0]))
                 .join(' ');
         },
-        runnerLapsCmpToAverage (runner) {
-            let average = this.runner_data.runners.reduce((a, b) => a + b.laps.length, 0) / this.runner_data.runners.length
+        runnerLapsCmpToAverage (runner, average) {
             let diff = Math.abs(average - runner.laps.length)
             let percent = Math.round((diff / runner.laps.length) * 100)
-            return `${percent}% ${percent >= 0 ? 'more' : 'less'}`
+            if (percent == Infinity) percent = -100
+            return percent
         }
 	}
 }

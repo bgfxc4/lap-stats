@@ -1,12 +1,11 @@
 <template>
-	<b-modal size="lg" id="authModal" class="text-secondary" centered hide-footer hide-header-close title="Authentification" header="test" header-class="justify-content-center">
+	<b-modal v-model="authModal" size="lg" id="authModal" class="text-secondary" centered hide-footer hide-header-close title="Authentification" header="test" header-class="justify-content-center">
 		<div class="modal-body text-center">
 			<p class="text-danger">{{errorText}}</p>
 			<label>(Optional) Enter a new instance name:</label><br/>
 			<input v-model="instanceName" type="text" placeholder="Enter an instance name..."/><br/>
 			<label class="mt-3">Enter the password to continue:</label><br/>
-			<input v-model="password" type="password" placeholder="Enter the password ..." @keyup.enter="auth"/>
-			<b-button id="authModalButton" class="d-none" v-b-modal.authModal /><br>
+			<input v-model="password" type="password" placeholder="Enter the password ..." @keyup.enter="auth"/><br/>
 			<button class="btn btn-primary mt-3" @click="auth">Enter</button>
 		</div>
 	</b-modal>
@@ -23,7 +22,8 @@ export default {
 			password: "",
             instanceName: this.$store.state.instanceName,
 			connection: null,
-			errorText: ""
+			errorText: "",
+            authModal: true,
 		}
 	},
 	methods: {
@@ -39,7 +39,7 @@ export default {
 			switch(msg.header) {
 				case "auth_test":
 					if (msg.data == "ok") {
-						$("#authModalButton").click()
+                        this.authModal = false
 						this.$emit("auth", this.connection, sha512(this.password+":lap-stats"))
 					} else {
 						this.password = ""
@@ -56,8 +56,6 @@ export default {
 		}
 	},
 	mounted() {
-		$("#authModalButton").click()
-
 		console.log("Starting connection to WebSocket Server")
 		this.connection = new WebSocket(this.$store.state.serverWsURL)
 		

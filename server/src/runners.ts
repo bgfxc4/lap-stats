@@ -82,9 +82,9 @@ async function auth_testHandler(ws: WebSocket, d: any): Promise<boolean> {
 }
 
 async function add_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
-	return await add_runner(d.data.name, d.data.id, d.data.class_name).then(() => {
+	return await add_runner(d.data.name, d.data.sponsor_money, d.data.id, d.data.class_name).then(() => {
         wss.clients.forEach(w => {
-            ws_send(w, "new_runner", {id: d.data.id, name: d.data.name, class_name: d.data.class_name})
+            ws_send(w, "new_runner", {id: d.data.id, sponsor_money: d.data.sponsor_money, name: d.data.name, class_name: d.data.class_name})
         })
         return true
     })
@@ -136,9 +136,10 @@ async function start_raceHandler(_: WebSocket, d: any): Promise<boolean> {
 	return true
 }
 
-async function add_runner(name: String, id: String, class_name: String) {
-    await (await db).run("INSERT INTO runners (name, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $id, $best_time, $last_lap_timestamp, $class_name)", {
+async function add_runner(name: String, sponsor_money: Number, id: String, class_name: String) {
+    await (await db).run("INSERT INTO runners (name, sponsor_money, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $sponsor_money, $id, $best_time, $last_lap_timestamp, $class_name)", {
 		$name: name,
+        $sponsor_money: sponsor_money,
 		$id: id,
 		$best_time: Infinity,
 		$last_lap_timestamp: null,
