@@ -2,8 +2,10 @@
 	<b-modal v-model="authModal" size="lg" id="authModal" class="text-secondary" centered hide-footer hide-header-close title="Authentification" header="test" header-class="justify-content-center">
 		<div class="modal-body text-center">
 			<p class="text-danger">{{errorText}}</p>
-			<label>(Optional) Enter a new instance name:</label><br/>
-			<input v-model="instanceName" type="text" placeholder="Enter an instance name..."/><br/>
+            <template v-if="$props.endpoint!='/admin'">
+                <label>(Optional) Enter a new instance name:</label><br/>
+                <input v-model="instanceName" type="text" placeholder="Enter an instance name..."/><br/>
+            </template>
 			<label class="mt-3">Enter the password to continue:</label><br/>
 			<input v-model="password" type="password" placeholder="Enter the password ..." @keyup.enter="auth"/><br/>
 			<button class="btn btn-primary mt-3" @click="auth">Enter</button>
@@ -16,6 +18,12 @@ import {sha512} from "js-sha512"
 
 export default {
 	name: "AuthModal",
+    props: {
+        "endpoint": {
+            default: "/runners",
+            type: String
+        }
+    },
 	emits: ["auth"],
 	data() {
 		return {
@@ -57,7 +65,7 @@ export default {
 	},
 	mounted() {
 		console.log("Starting connection to WebSocket Server")
-		this.connection = new WebSocket(this.$store.state.serverWsURL)
+		this.connection = new WebSocket(this.$store.state.serverWsURL + this.$props.endpoint)
 		
 		this.connection.onmessage = event => {
 			this.compute_msg(JSON.parse(event.data))

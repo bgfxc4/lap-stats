@@ -4,6 +4,7 @@ import * as WebSocket from 'ws'
 import { AddressInfo } from 'net'
 import * as runners from "./runners"
 import * as scanners from "./scanners"
+import * as admin from "./admin"
 
 const app = express.application
 
@@ -17,6 +18,8 @@ wss.on('connection', (ws: WebSocket, req) => {
             runners.handleCommand(ws, msg)
         } else if (req.url == "/scanners") {
             scanners.handleCommand(ws, msg)
+        } else if (req.url == "/admin") {
+            admin.handleCommand(ws, msg)
         }
 	})
 })

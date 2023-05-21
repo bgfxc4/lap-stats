@@ -1,6 +1,7 @@
 <template>
 	<div id="SetupView">
 		<div id="show-existing" style="height: 100vh">
+            <p v-if="$store.state.instanceName==undefined" style="color: red;">Invalid instance name</p>
 			<div id="classes">
                 <div style="display: inline-block">
                     <b-button style="height: 4%; margin-bottom: 1%; margin-top: 4%; margin-left: 5px; float: right" btn variant="primary" @click="createClassModal = true">Create new class</b-button>

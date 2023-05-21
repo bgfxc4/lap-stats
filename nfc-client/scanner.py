@@ -29,11 +29,20 @@ def setup_nfc():
     nfc.setPassiveActivationRetries(0xFF)
     nfc.SAMConfig()
 
-def on_open(a):
-    print("websocket open")
+def on_open(ws):
+    print("websocket open") 
+    data = {
+        "header": "register_scanner",
+        "data": {
+            "name": "screen1_scanner1",
+            "screen_name": "screen1",
+        }
+    }
+
+    ws.send(json.dumps(data))
 
 def on_error(a, b):
-    print("websocket error")
+    print("websocket error", a, b)
 
 def on_close():
     print("websocket closed")

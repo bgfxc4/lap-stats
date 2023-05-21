@@ -22,6 +22,7 @@ export default {
                     if (msg.data == "Instance name does already exist!")
                         this.$store.commit("setInstanceName", undefined)
                     console.error(msg.data)
+                    this.$store.commit("setInstanceName", undefined)
                     break
             }
 		},
