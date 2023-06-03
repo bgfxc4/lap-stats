@@ -17,8 +17,14 @@
                             </div>
                         </div>
                         <div class="row" style="height: 50%">
-                            <div class="col-12 panel">
-                                scans
+                            <div class="col-12 panel" style="height: 100%">
+                                scan
+                                <transition-group name="flip-list">
+                                    <div v-for="(sc, idx) in scans.slice().reverse()" :key="idx" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
+                                        <p style="font-weight: bold; margin: 0; display: inline">{{ sc.name }}</p> {{ sc.id }} <br>
+                                        <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ sc.lapTime }}</p> {{sc.timeStamp}}
+                                    </div>
+                                </transition-group>
                             </div>
                         </div>
                     </div>
@@ -29,12 +35,16 @@
                             <div v-for="(runner, idx) in showRunners" :key="runner.id" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
                                 {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ runner.name }}</p> <p style="font-weight: lighter; margin: 0; display: inline">{{ runner.id }}</p><br>
                                 <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ runner.laps.length }}</p> laps
-                                <p style="float: right; display: inline; margin: 0;"> <span class="text-success" :class="{'text-danger': (runner.cmpToAvg < 0) }"> {{ `${runner.cmpToAvg >= 0 ? '+' : ''}${runner.cmpToAvg}%`}} </span> </p>
                             </div>
                         </transition-group>
                     </div>
                     <div style="height: 30%; margin-top: 1.5rem" class="panel">
-                        classes
+                        <transition-group name="flip-list">
+                            <div v-for="(cl, idx) in showClasses" :key="cl.name" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
+                                {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ cl.name }}</p><br>
+                                <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ cl.laps }}</p> laps
+                            </div>
+                        </transition-group>
                     </div>
                 </div>
             </div>
@@ -58,11 +68,14 @@ export default {
 		return {
 			runner_data: {},
 			showRunners: [],
+            showClasses: [],
 			connection: null,
 			connection_password: null,
 			errorText: null,
 			openModal: null, // stores name of open modal to close it when confirm_action gets send
 			raceRunningTime: NaN,
+
+            scans: [],
 		}
 	},
 	methods: {
@@ -70,7 +83,7 @@ export default {
 			switch (data.header) {
 				case "all_data":
 					this.runner_data = data.data
-					this.runner_data.runners = data.data.runners.map(el => {el.laps = JSON.parse(el.laps); return el})
+					// this.runner_data.runners = data.data.runners.map(el => {el.laps = JSON.parse(el.laps); return el})
 					this.runnerDataToShowRunners()
 					if (this.runner_data.start_time != null)
 						this.startRaceTimeCounter()
@@ -96,8 +109,12 @@ export default {
 					this.runner_data.runners = this.runner_data.runners.filter(el => el.class_name != data.data.name)
 					this.runnerDataToShowRunners()
 					break
+                case "edit_runner":
+                    let idx = this.runner_data.runners.findIndex(el => el.id == data.data.id)
+                    this.runner_data.runners[idx] = data.data
+                    break
 				case "runner_lap":
-					this.addLapToRunner(data.data.id, data.data.timestamp)
+					this.addLapToRunner(data.data.id, data.data.timestamp, data.data.screen_name)
 					this.runnerDataToShowRunners()
 					break
 				case "start_race":
@@ -111,20 +128,30 @@ export default {
 					break
 			}
 		},
-		addLapToRunner(id, timestamp) {
+		addLapToRunner(id, timestamp, screen_name) {
 			let rIdx = this.runner_data.runners.findIndex(el => el.id == id)
 			let lapTime = timestamp - (this.runner_data.runners[rIdx].last_lap_timestamp || this.runner_data.start_time)
 			this.runner_data.runners[rIdx].laps.push(lapTime)
 			this.runner_data.runners[rIdx].last_lap_timestamp = timestamp
 			if (lapTime < (this.runner_data.runners[rIdx].best_time || Infinity)) this.runner_data.runners[rIdx].best_time = lapTime
+
+            if (screen_name == this.$store.state.instanceName) {
+                this.scans.push({
+                    id,
+                    timestamp,
+                    lapTime,
+                    name: this.runner_data.runners[rIdx].name,
+                })
+            }
 		},
 		runnerDataToShowRunners() {
 			this.showRunners = this.runner_data.runners.sort((a, b) => b.laps.length - a.laps.length)
-
-            let average = this.runner_data.runners.reduce((a, b) => a + b.laps.length, 0) / this.runner_data.runners.length
-            for (let r of this.showRunners) {
-                r.cmpToAvg = this.runnerLapsCmpToAverage(r, average)
+            
+            this.showClasses = this.runner_data.classes.map(el => {return {name: el.name, laps: 0}})
+            for (let c in this.showClasses) {
+                this.showClasses[c].laps = this.showRunners.filter(el => el.class_name == this.showClasses[c].name).map(el => el.laps.length).reduce((a, b) => a+b, 0)
             }
+            this.showClasses = this.showClasses.sort((a, b) => b.laps - a.laps)
 		},
 		ws_send (header, d) {
 			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
@@ -146,7 +173,7 @@ export default {
 		},
         nfcDetected(data) {
             console.log("nfc: " + data.id)
-			this.ws_send("runner_lap", {id: data.id})
+			this.ws_send("runner_lap", {id: data.id, screen_name: this.$store.state.instanceName})
         },
         formatMillis (ms) {
             if (ms < 0) ms = -ms;
@@ -159,12 +186,6 @@ export default {
                 .map(val => val[1] + (val[1] !== 1 ? val[0] : val[0]))
                 .join(' ');
         },
-        runnerLapsCmpToAverage (runner, average) {
-            let diff = Math.abs(average - runner.laps.length)
-            let percent = Math.round((diff / runner.laps.length) * 100)
-            if (percent == Infinity) percent = -100
-            return percent
-        }
 	}
 }
 </script>

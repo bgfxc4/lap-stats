@@ -19,7 +19,7 @@
                     <b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
                 </div>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
-					<runner @debugLap="sendDebugLap" @delete="id => {deleteRunnerID = id; deleteRunnerModal = true}" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
+					<runner @debugLap="sendDebugLap" @edit="id => { openEditRunner(id) }" @delete="id => { deleteRunnerID = id; deleteRunnerModal = true }" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
 			</div>
 		</div>
@@ -34,8 +34,12 @@
 				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
                 ID: {{newRunnerID}}
 
-				<p class="my-0">Enter the sponsored amount of money per lap in €:</p>
-				<input v-model="newRunnerSponsorMoney" type="number" class="mb-4" placeholder="Enter a value..."/><br>
+                <div class="mb-2" v-for="(s, idx) in newRunnerSponsors" :key="idx">
+				    <input v-model="s.name" type="text" placeholder="Enter a name..."/>
+				    <input v-model="s.amount" type="number" placeholder="Enter a value in €..."/>
+                    <button @click="newRunnerSponsors.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
+                </div>
+                <button class="btn btn-secondary mb-2" @click="newRunnerSponsors.push({name: '', amount: 0})">Add Sponsor</button>
 
 				<select v-model="newRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Select the class for the runner</option>
@@ -44,6 +48,33 @@
 
 				<b-button id="createRunnerModalButton" class="btn btn-secondary mx-2" @click="createRunnerModal = false">Cancel</b-button>
 				<button class="btn btn-outline-info" @click="createRunner">Create</button>
+			</div>
+		</b-modal>
+
+		<b-modal size="lg" v-model="editRunnerModal" ref="editRunnerModal" class="text-secondary" centered hide-footer hide-header-close title="Edit runner" header="test" header-class="justify-content-center">
+			<div class="modal-body text-center">
+				<p class="text-danger">{{errorText}}</p>
+				<p class="my-0">Edit the name of the runner:</p>
+				<input v-model="editRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
+
+				<!-- <p class="my-0">Enter an id for the new runner:</p> -->
+				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
+                ID: {{editRunnerID}}
+
+                <div class="mb-2" v-for="(s, idx) in editRunnerSponsors" :key="idx">
+				    <input v-model="s.name" type="text" placeholder="Enter a name..."/>
+				    <input v-model="s.amount" type="number" placeholder="Enter a value in €..."/>
+                    <button @click="editRunnerSponsors.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
+                </div>
+                <button class="btn btn-secondary mb-2" @click="editRunnerSponsors.push({name: '', amount: 0})">Add Sponsor</button>
+
+				<select v-model="editRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
+					<option selected>Edit the class for the runner</option>
+					<option v-for="c in runner_data.classes" :key="c.name" :value="c.name">{{c.name}}</option>
+				</select>
+
+				<b-button id="editRunnerModalButton" class="btn btn-secondary mx-2" @click="editRunnerModal = false">Cancel</b-button>
+				<button class="btn btn-outline-info" @click="editRunner">Edit</button>
 			</div>
 		</b-modal>
 
@@ -113,16 +144,22 @@ export default {
 			raceRunningTime: null,
 
 			newRunnerName: "",
-			newRunnerSponsorMoney: "",
 			newRunnerID: "",
 			newRunnerClass: "",
 			newClassName: "",
+            newRunnerSponsors: [],
+
+			editRunnerName: "",
+			editRunnerID: "",
+			editRunnerClass: "",
+            editRunnerSponsors: [],
 
 			deleteRunnerID: "",
 			deleteClassName: "",
 
             startRaceModal: false,
             createRunnerModal: false,
+            editRunnerModal: false,
             createClassModal: false,
             deleteRunnerModal: false,
             deleteClassModal: false,
@@ -149,6 +186,10 @@ export default {
 					this.runner_data.classes.splice(this.runner_data.classes.findIndex(el => el.name == data.data.name), 1)
 					this.runner_data.runners = this.runner_data.runners.filter(el => el.class_name != data.data.name)
 					break
+                case "edit_runner":
+                    let idx = this.runner_data.runners.findIndex(el => el.id == data.data.id)
+                    this.runner_data.runners[idx] = data.data
+                    break
 				case "start_race":
 					this.runner_data.start_time = data.data.timestamp
 					this.startRaceTimeCounter()
@@ -167,13 +208,29 @@ export default {
 			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
 		},
 		createRunner() {
-			this.ws_send("add_runner", {name: this.newRunnerName, sponsor_money: this.newRunnerSponsorMoney, id: this.newRunnerID, class_name: this.newRunnerClass})
+			this.ws_send("add_runner", {name: this.newRunnerName, sponsors: this.newRunnerSponsors, id: this.newRunnerID, class_name: this.newRunnerClass})
 			this.newRunnerClass = ""
 			this.newRunnerID = ""
 			this.newRunnerName = ""
-			this.newRunnerSponsorMoney = ""
+            this.newRunnerSponsors = []
 			this.openModal = "createRunner"
 		},
+        openEditRunner(id) {
+            let runner = this.runner_data.runners.find(el => el.id == id)
+            this.editRunnerSponsors = runner.sponsors
+            this.editRunnerID = id
+            this.editRunnerName = runner.name
+            this.editRunnerClass = runner.class_name
+            this.editRunnerModal = true
+        },
+        editRunner() {
+			this.ws_send("edit_runner", {name: this.editRunnerName, sponsors: this.editRunnerSponsors, id: this.editRunnerID, class_name: this.editRunnerClass})
+            this.editRunnerSponsors = []
+            this.editRunnerID = ""
+            this.editRunnerName = ""
+            this.editRunnerClass = ""
+            this.openModal = "editRunner"
+        },
 		createClass() {
 			this.ws_send("add_class", {name: this.newClassName})
 			this.newClassName  = ""
@@ -209,7 +266,9 @@ export default {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
 						this.newRunnerID = i + "" + j + "" + h
 						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
-                        this.newRunnerSponsorMoney = Math.floor(Math.random() * 10)
+                        for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
+                            this.newRunnerSponsors.push({name: "a"+i, amount: Math.floor(Math.random() * 7)})
+                        }
 						this.createRunner()
 					}
 				}
@@ -226,7 +285,9 @@ export default {
 						this.newRunnerClass = i + " " + ["a", "b", "c", "d"][j]
 						this.newRunnerID = i + "" + j + "" + h
 						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
-                        this.newRunnerSponsorMoney = Math.floor(Math.random() * 10)
+                        for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
+                            this.newRunnerSponsors.push({name: "a"+i, amount: Math.floor(Math.random() * 7)})
+                        }
 						this.createRunner()
 					}
 				}
@@ -251,6 +312,7 @@ export default {
             this.newRunnerID = id.id
             this.createRunnerModal = true
             console.log("nfc: " + id.id)
+			this.ws_send("runner_lap", {id: data.id, screen_name: this.$store.state.instanceName})
         }
 	}
 }

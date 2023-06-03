@@ -32,8 +32,13 @@ async function setupDB (db: sqlite.Database<sqlite3.Database, sqlite3.Statement>
         name TEXT,
         best_time REAL,
         last_lap_timestamp INTEGER, 
-        sponsor_money REAL NOT NULL,
         class_name TEXT REFERENCES classes(name) ON DELETE CASCADE
+    )`)
+
+    await db.run(`CREATE TABLE runner_sponsors (
+        runner_id TEXT REFERENCES runners(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL
     )`)
 
     await db.run(`CREATE TABLE laps (

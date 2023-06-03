@@ -32,6 +32,7 @@ const commandList: {
 	"add_class": {availableWhen: "setup", requiresConfirm: true, requiresAuth: true, handler: add_classHandler},
 	"delete_runner": {availableWhen: "setup", requiresConfirm: true, requiresAuth: true, handler: delete_runnerHandler},
 	"delete_class": {availableWhen: "setup", requiresConfirm: true, requiresAuth: true, handler: delete_classHandler},
+	"edit_runner": {availableWhen: "setup", requiresConfirm: true, requiresAuth: true, handler: edit_runnerHandler},
 	"start_race": {availableWhen: "setup", requiresConfirm: true, requiresAuth: true, handler: start_raceHandler},
 
 	"runner_lap": {availableWhen: "raceStarted", requiresConfirm: true, requiresAuth: true, handler: runner_lapHandler},
@@ -82,9 +83,9 @@ async function auth_testHandler(ws: WebSocket, d: any): Promise<boolean> {
 }
 
 async function add_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
-	return await add_runner(d.data.name, d.data.sponsor_money, d.data.id, d.data.class_name).then(() => {
+	return await add_runner(d.data.name, d.data.sponsors, d.data.id, d.data.class_name).then(() => {
         wss.clients.forEach(w => {
-            ws_send(w, "new_runner", {id: d.data.id, sponsor_money: d.data.sponsor_money, name: d.data.name, class_name: d.data.class_name})
+            ws_send(w, "new_runner", {id: d.data.id, sponsors: d.data.sponsors, name: d.data.name, class_name: d.data.class_name})
         })
         return true
     })
@@ -106,7 +107,7 @@ async function get_dataHandler(ws: WebSocket, d: any): Promise<boolean> {
 async function runner_lapHandler(ws: WebSocket, d: any): Promise<boolean> {
 	await add_lap_to_runner(d?.data?.id, Date.now())
 	wss.clients.forEach(w => {
-		ws_send(w, "runner_lap", {id: d?.data?.id, timestamp: Date.now()})
+		ws_send(w, "runner_lap", {id: d?.data?.id, timestamp: Date.now(), screen_name: d?.data?.screen_name})
 	})
 	return true
 }
@@ -127,6 +128,15 @@ async function delete_classHandler(ws: WebSocket, d: any): Promise<boolean> {
 	return true
 }
 
+async function edit_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
+	return await edit_runner(d.data.name, d.data.sponsors, d.data.id, d.data.class_name).then(() => {
+        wss.clients.forEach(w => {
+            ws_send(w, "edit_runner", {id: d.data.id, sponsors: d.data.sponsors, name: d.data.name, class_name: d.data.class_name})
+        })
+        return true
+    })
+}
+
 async function start_raceHandler(_: WebSocket, d: any): Promise<boolean> {
 	let start_time = Date.now() + 1000 * config.race_time_startup_secs
     await (await db).run("UPDATE race_data SET start_time = $start_time", {$start_time: start_time})
@@ -136,15 +146,35 @@ async function start_raceHandler(_: WebSocket, d: any): Promise<boolean> {
 	return true
 }
 
-async function add_runner(name: String, sponsor_money: Number, id: String, class_name: String) {
-    await (await db).run("INSERT INTO runners (name, sponsor_money, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $sponsor_money, $id, $best_time, $last_lap_timestamp, $class_name)", {
+async function add_runner(name: String, sponsors: {name: String, amount: number}[], id: String, class_name: String) {
+    await (await db).run("INSERT INTO runners (name, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $id, $best_time, $last_lap_timestamp, $class_name)", {
 		$name: name,
-        $sponsor_money: sponsor_money,
 		$id: id,
 		$best_time: Infinity,
 		$last_lap_timestamp: null,
 		$class_name: class_name 
     })
+    let params: {[key: string]: String|number} = { $runner_id: id }
+    sponsors.forEach((el, idx) => {
+        params[`$name${idx}`] = el.name
+        params[`$amount${idx}`] = el.amount
+    })
+    await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+}
+
+async function edit_runner(name: String, sponsors: {name: String, amount: number}[], id: String, class_name: String) {
+    await (await db).run("UPDATE runners SET name = $name, class_name = $class_name WHERE id = $id", {
+		$name: name,
+		$id: id,
+		$class_name: class_name 
+    })
+    let params: {[key: string]: String|number} = { $runner_id: id }
+    sponsors.forEach((el, idx) => {
+        params[`$name${idx}`] = el.name
+        params[`$amount${idx}`] = el.amount
+    })
+    await (await db).run("DELETE FROM runner_sponsors WHERE runner_id = $runner_id", { $runner_id: id })
+    await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
 }
 
 async function add_class(name: String) {
@@ -179,9 +209,16 @@ async function add_lap_to_runner(id: String, timestamp: number) {
 
 async function get_data () {
     let race_data = await (await db).get("SELECT * FROM race_data")
-    let runners = await (await db).all("SELECT *, (SELECT json_group_array ( time ) FROM laps WHERE runner_id = id) AS laps FROM runners;")
+    let runners = (await (await db).all(`SELECT *, (SELECT json_group_array ( time ) FROM laps WHERE runner_id = id) AS laps, 
+                                       (SELECT json_group_array ( json_object('name', name, 'amount', amount) ) FROM runner_sponsors WHERE runner_id = id) as sponsors
+                                        FROM runners;`)).map(el => {
+                                            return {
+                                                ...el,
+                                                laps: JSON.parse(el.laps),
+                                                sponsors: JSON.parse(el.sponsors), // laps and sponsors are strings and need to be parsed to objects
+                                            }
+                                        })
     let classes = await (await db).all("SELECT * FROM classes")
-
     return {
         runners,
         classes,
