@@ -6,31 +6,34 @@
                     <div class="container" style="height: 100%">
                         <div class="row" style="height: 50%">
                             <div class="col-5">
-                                <div class="panel" style="height: calc(100% - 1.5rem); font-size: 5svw; text-align: center; font-weight: bold;">
+                                <div class="panel text-center" style="height: calc(100% - 1.5rem); font-size: 5svw; font-weight: bold;">
+                                    <p class="h3 lead text-start mx-3">Time since start</p>
                                     {{raceRunningTime ? formatMillis(raceRunningTime) : "Not started yet"}}
                                 </div>
                             </div>
                             <div class="col-7">
                                 <div class="panel" style="height: calc(100% - 1.5rem)">
-                                    total stats
+                                    <p class="h3 lead text-start mx-3">Total stats</p>
                                 </div>
                             </div>
                         </div>
                         <div class="row" style="height: 50%">
-                            <div class="col-12 panel" style="height: 100%">
-                                scan
-                                <transition-group name="flip-list">
+                            <div class="col-12 panel" style="height: 100%;">
+                                <p class="h3 lead text-start mx-3">Last scans</p>
+                                <transition-group name="flip-list" v-if="scans.length">
                                     <div v-for="(sc, idx) in scans.slice().reverse()" :key="idx" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
                                         <p style="font-weight: bold; margin: 0; display: inline">{{ sc.name }}</p> {{ sc.id }} <br>
                                         <p style="display: inline; font-weight: bold; margin: 0; margin-left: 2ex">{{ sc.lapTime }}</p> {{sc.timeStamp}}
                                     </div>
                                 </transition-group>
+                                <p v-else class="text-center mt-5 h5">None</p>
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="col-5" style="height: 100%">
                     <div style="height: calc(70% - 1.5rem)" class="panel">
+                        <p class="h3 lead text-start mx-3">Student leaderboard</p>
                         <transition-group name="flip-list">
                             <div v-for="(runner, idx) in showRunners" :key="runner.id" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
                                 {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ runner.name }}</p> <p style="font-weight: lighter; margin: 0; display: inline">{{ runner.id }}</p><br>
@@ -39,6 +42,7 @@
                         </transition-group>
                     </div>
                     <div style="height: 30%; margin-top: 1.5rem" class="panel">
+                        <p class="h3 lead text-start mx-3">Class leaderboard</p>
                         <transition-group name="flip-list">
                             <div v-for="(cl, idx) in showClasses" :key="cl.name" class="mx-3 my-2 p-1" style="background-color: var(--bs-dark); border-radius: 7px;">
                                 {{idx+1}}. <p style="font-weight: bold; margin: 0; display: inline">{{ cl.name }}</p><br>
