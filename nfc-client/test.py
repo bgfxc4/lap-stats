@@ -1,13 +1,11 @@
 from pn532pi import Pn532I2c, Pn532, pn532
+import sys
 import binascii
-import websocket
 import asyncio
-import rel
 import math
 import time
 import json
-import sys
-	
+
 i2c = Pn532I2c(int(sys.argv[1]))
 nfc = Pn532(i2c)
 
@@ -30,7 +28,7 @@ def setup_nfc():
     nfc.setPassiveActivationRetries(0xFF)
     nfc.SAMConfig()
 
-def on_open(ws):
+def on_open():
     print("websocket open") 
     data = {
         "header": "register_scanner",
@@ -40,7 +38,6 @@ def on_open(ws):
         }
     }
 
-    ws.send(json.dumps(data))
 
 def on_error(a, b):
     print("websocket error", a, b)
@@ -52,19 +49,13 @@ def on_message():
     print("websocket message")
 
 async def main():
-    ws = websocket.WebSocketApp("ws://192.168.178.70:8999/scanners",
-                                on_open=on_open,
-                                on_message=on_message,
-                                on_error=on_error,
-                                on_close=on_close)
-    ws.run_forever(dispatcher=rel, reconnect=5)
-    await get_nfc_update(ws)
+    await get_nfc_update()
 
-async def get_nfc_update(ws):
+async def get_nfc_update():
     while True:
-        await loop(ws)
+        await loop()
 
-async def loop(ws):
+async def loop():
     # Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
     # 'uid' will be populated with the UID, and uidLength will indicate
     # if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
@@ -86,7 +77,6 @@ async def loop(ws):
             }
         }
 
-        ws.send(json.dumps(data))
         print(json.dumps(data))
 
         # Wait 1 second before continuing
