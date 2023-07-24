@@ -15,6 +15,12 @@ export const config: Config = {
        ],
        "screen2": [
             "screen2_scanner1",
+       ],
+       "screen3": [
+            "screen3_scanner1",
+       ],
+       "screen4": [
+            "screen4_scanner1",
        ]
    },
 }

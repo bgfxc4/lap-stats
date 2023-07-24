@@ -83,9 +83,9 @@ async function auth_testHandler(ws: WebSocket, d: any): Promise<boolean> {
 }
 
 async function add_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
-	return await add_runner(d.data.name, d.data.sponsors, d.data.id, d.data.class_name).then(() => {
+	return await add_runner(d.data.name, d.data.sponsors, d.data.sponsors_fixed, d.data.id, d.data.class_name, d.data.index).then(() => {
         wss.clients.forEach(w => {
-            ws_send(w, "new_runner", {id: d.data.id, sponsors: d.data.sponsors, name: d.data.name, class_name: d.data.class_name})
+            ws_send(w, "new_runner", {id: d.data.id, sponsors: d.data.sponsors, sponsors_fixed: d.data.sponsors_fixed, name: d.data.name, class_name: d.data.class_name, index: d.data.index})
         })
         return true
     })
@@ -129,9 +129,9 @@ async function delete_classHandler(ws: WebSocket, d: any): Promise<boolean> {
 }
 
 async function edit_runnerHandler(ws: WebSocket, d: any): Promise<boolean> {
-	return await edit_runner(d.data.name, d.data.sponsors, d.data.id, d.data.class_name).then(() => {
+	return await edit_runner(d.data.name, d.data.sponsors, d.data.sponsors_fixed, d.data.id, d.data.class_name, d.data.index).then(() => {
         wss.clients.forEach(w => {
-            ws_send(w, "edit_runner", {id: d.data.id, sponsors: d.data.sponsors, name: d.data.name, class_name: d.data.class_name})
+            ws_send(w, "edit_runner", {id: d.data.id, sponsors: d.data.sponsors, sponsors_fixed: d.data.sponsors_fixed, name: d.data.name, class_name: d.data.class_name, index: d.data.index})
         })
         return true
     })
@@ -146,35 +146,62 @@ async function start_raceHandler(_: WebSocket, d: any): Promise<boolean> {
 	return true
 }
 
-async function add_runner(name: String, sponsors: {name: String, amount: number}[], id: String, class_name: String) {
-    await (await db).run("INSERT INTO runners (name, id, best_time, last_lap_timestamp, class_name) VALUES ($name, $id, $best_time, $last_lap_timestamp, $class_name)", {
+async function add_runner(name: String, sponsors: {name: String, amount: number}[], sponsors_fixed: {name: String, amount: number}[], id: String, class_name: String, index: number) {
+    await (await db).run("INSERT INTO runners (name, id, best_time, last_lap_timestamp, class_name, idx) VALUES ($name, $id, $best_time, $last_lap_timestamp, $class_name, $index)", {
 		$name: name,
 		$id: id,
 		$best_time: Infinity,
 		$last_lap_timestamp: null,
-		$class_name: class_name 
+		$class_name: class_name,
+        $index: index
     })
-    let params: {[key: string]: String|number} = { $runner_id: id }
-    sponsors.forEach((el, idx) => {
-        params[`$name${idx}`] = el.name
-        params[`$amount${idx}`] = el.amount
-    })
-    await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    
+    if (sponsors.length != 0) {
+        let params: {[key: string]: String|number} = { $runner_id: id }
+        sponsors.forEach((el, idx) => {
+            params[`$name${idx}`] = el.name
+            params[`$amount${idx}`] = el.amount
+        })
+        await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    }
+
+    if (sponsors_fixed.length != 0) {
+        let params: {[key: string]: String|number} = { $runner_id: id }
+        sponsors_fixed.forEach((el, idx) => {
+            params[`$name${idx}`] = el.name
+            params[`$amount${idx}`] = el.amount
+        })
+        await (await db).run(`INSERT INTO runner_sponsors_fixed (runner_id, name, amount) VALUES ${sponsors_fixed.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    }
 }
 
-async function edit_runner(name: String, sponsors: {name: String, amount: number}[], id: String, class_name: String) {
-    await (await db).run("UPDATE runners SET name = $name, class_name = $class_name WHERE id = $id", {
+async function edit_runner(name: String, sponsors: {name: String, amount: number}[], sponsors_fixed: {name: String, amount: number}[], id: String, class_name: String, index: number) {
+    await (await db).run("UPDATE runners SET name = $name, class_name = $class_name, idx = $index WHERE id = $id", {
 		$name: name,
 		$id: id,
-		$class_name: class_name 
+		$class_name: class_name,
+        $index: index
     })
-    let params: {[key: string]: String|number} = { $runner_id: id }
-    sponsors.forEach((el, idx) => {
-        params[`$name${idx}`] = el.name
-        params[`$amount${idx}`] = el.amount
-    })
+
     await (await db).run("DELETE FROM runner_sponsors WHERE runner_id = $runner_id", { $runner_id: id })
-    await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    if (sponsors.length != 0) {
+        let params: {[key: string]: String|number} = { $runner_id: id }
+        sponsors.forEach((el, idx) => {
+            params[`$name${idx}`] = el.name
+            params[`$amount${idx}`] = el.amount
+        })
+        await (await db).run(`INSERT INTO runner_sponsors (runner_id, name, amount) VALUES ${sponsors.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    }
+
+    await (await db).run("DELETE FROM runner_sponsors_fixed WHERE runner_id = $runner_id", { $runner_id: id })
+    if (sponsors_fixed.length != 0) {
+        let params: {[key: string]: String|number} = { $runner_id: id }
+        sponsors_fixed.forEach((el, idx) => {
+            params[`$name${idx}`] = el.name
+            params[`$amount${idx}`] = el.amount
+        })
+        await (await db).run(`INSERT INTO runner_sponsors_fixed (runner_id, name, amount) VALUES ${sponsors_fixed.map((_, idx) => `($runner_id, $name${idx}, $amount${idx})`)}`, params)
+    }
 }
 
 async function add_class(name: String) {
@@ -209,13 +236,15 @@ async function add_lap_to_runner(id: String, timestamp: number) {
 
 async function get_data () {
     let race_data = await (await db).get("SELECT * FROM race_data")
-    let runners = (await (await db).all(`SELECT *, (SELECT json_group_array ( time ) FROM laps WHERE runner_id = id) AS laps, 
-                                       (SELECT json_group_array ( json_object('name', name, 'amount', amount) ) FROM runner_sponsors WHERE runner_id = id) as sponsors
+    let runners = (await (await db).all(`SELECT *, idx as [index], (SELECT json_group_array ( time ) FROM laps WHERE runner_id = id) AS laps, 
+                                       (SELECT json_group_array ( json_object('name', name, 'amount', amount) ) FROM runner_sponsors WHERE runner_id = id) as sponsors,
+                                       (SELECT json_group_array ( json_object('name', name, 'amount', amount) ) FROM runner_sponsors_fixed WHERE runner_id = id) as sponsors_fixed
                                         FROM runners;`)).map(el => {
                                             return {
                                                 ...el,
                                                 laps: JSON.parse(el.laps),
-                                                sponsors: JSON.parse(el.sponsors), // laps and sponsors are strings and need to be parsed to objects
+                                                sponsors: JSON.parse(el.sponsors),
+                                                sponsors_fixed: JSON.parse(el.sponsors_fixed), // laps, sponsors and sponsors_fixed are strings and need to be parsed to objects
                                             }
                                         })
     let classes = await (await db).all("SELECT * FROM classes")

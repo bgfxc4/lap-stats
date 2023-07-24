@@ -29,6 +29,7 @@ async function setupDB (db: sqlite.Database<sqlite3.Database, sqlite3.Statement>
 
     await db.run(`CREATE TABLE runners (
         id TEXT PRIMARY KEY, 
+        idx INTEGER UNIQUE,
         name TEXT,
         best_time REAL,
         last_lap_timestamp INTEGER, 
@@ -36,6 +37,12 @@ async function setupDB (db: sqlite.Database<sqlite3.Database, sqlite3.Statement>
     )`)
 
     await db.run(`CREATE TABLE runner_sponsors (
+        runner_id TEXT REFERENCES runners(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL
+    )`)
+
+    await db.run(`CREATE TABLE runner_sponsors_fixed (
         runner_id TEXT REFERENCES runners(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         amount REAL NOT NULL
