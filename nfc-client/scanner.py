@@ -35,8 +35,8 @@ def on_open(ws):
     data = {
         "header": "register_scanner",
         "data": {
-            "name": "screen1_scanner1",
-            "screen_name": "screen1",
+            "name": sys.argv[3],
+            "screen_name": sys.argv[2],
         }
     }
 
@@ -52,7 +52,7 @@ def on_message():
     print("websocket message")
 
 async def main():
-    ws = websocket.WebSocketApp("ws://192.168.178.70:8999/scanners",
+    ws = websocket.WebSocketApp("ws://172.20.26.20:8999/scanners",
                                 on_open=on_open,
                                 on_message=on_message,
                                 on_error=on_error,
@@ -68,34 +68,43 @@ async def loop(ws):
     # Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
     # 'uid' will be populated with the UID, and uidLength will indicate
     # if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-    success, uid = nfc.readPassiveTargetID(pn532.PN532_MIFARE_ISO14443A_106KBPS)
+    try:
+        success, uid = nfc.readPassiveTargetID(pn532.PN532_MIFARE_ISO14443A_106KBPS)
 
-    if (success):
-        print("Found a card!")
-        print("UID Length: {:d}".format(len(uid)))
-        print("UID Value: {}".format(binascii.hexlify(uid)))
+        if (success):
+            print("Found a card!")
+            print("UID Length: {:d}".format(len(uid)))
+            print("UID Value: {}".format(binascii.hexlify(uid)))
 
-        # websockets.broadcast(CLIENTS, binascii.hexlify(uid))
+            # websockets.broadcast(CLIENTS, binascii.hexlify(uid))
 
-        data = {
-            "header": "tag_scanned",
-            "data": {
-                "timestamp": math.floor(time.time()*1000),
-                "id": binascii.hexlify(uid).decode("utf-8"),
-                "screen_name": "screen1",
+            data = {
+                "header": "tag_scanned",
+                "data": {
+                    "timestamp": math.floor(time.time()*1000),
+                    "id": binascii.hexlify(uid).decode("utf-8"),
+                    "screen_name": sys.argv[2],
+                }
             }
-        }
 
-        ws.send(json.dumps(data))
-        print(json.dumps(data))
+            ws.send(json.dumps(data))
+            print(json.dumps(data))
 
-        # Wait 1 second before continuing
-        await asyncio.sleep(1)
-        return True
-    else:
-        # pn532 probably timed out waiting for a card
-        print("Timed out waiting for a card")
-        return False
+            # Wait 1 second before continuing
+            await asyncio.sleep(1)
+            return True
+        else:
+            # pn532 probably timed out waiting for a card
+            #print("Timed out waiting for a card")
+            return False
+
+    except:
+        print("scan failed, reseting scanner")
+        #i2c = Pn532I2c(int(sys.argv[1]))
+        #nfc = Pn532(i2c)
+        #setup_nfc()
+        sys.exit("reseting scanner")
+        #return False
 
 if __name__ == '__main__':
     setup_nfc()
