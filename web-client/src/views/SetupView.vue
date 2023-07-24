@@ -19,7 +19,7 @@
                     <b-button v-if="$store.state.isDebug" @click="debugCreateGroup()" style="height: 4%; margin-bottom: 1%; margin-top: 1%; float: right" btn variant="info">debug group</b-button>
                 </div>
 				<ul class="list-group" style="height: 93%; overflow-y: auto">
-					<runner @debugLap="sendDebugLap" @edit="id => { openEditRunner(id) }" @delete="id => { deleteRunnerID = id; deleteRunnerModal = true }" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
+                    <runner @debugLap="sendDebugLap" @edit="id => { openEditRunner(id) }" @delete="id => { deleteRunnerID = id; deleteRunnerModal = true }" :soloClassName="soloClassName" v-for="r in runner_data.runners" :key="r?.id" :runner="r"/>
 				</ul>
 			</div>
 		</div>
@@ -29,6 +29,8 @@
 				<p class="text-danger">{{errorText}}</p>
 				<p class="my-0">Enter a name for the new runner:</p>
 				<input v-model="newRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
+				<p class="my-0">Enter the chip index for the runner:</p>
+				<input v-model="newRunnerIndex" class="mb-4" type="number" placeholder="Enter the chip index..."/><br>
 
 				<!-- <p class="my-0">Enter an id for the new runner:</p> -->
 				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
@@ -40,6 +42,13 @@
                     <button @click="newRunnerSponsors.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
                 </div>
                 <button class="btn btn-secondary mb-2" @click="newRunnerSponsors.push({name: '', amount: 0})">Add Sponsor</button>
+                <br>
+                <div class="mb-2" v-for="(s, idx) in newRunnerSponsorsFixed" :key="idx">
+				    <input v-model="s.name" type="text" placeholder="Enter a name..."/>
+				    <input v-model="s.amount" type="number" placeholder="Enter a value in €..."/>
+                    <button @click="newRunnerSponsorsFixed.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
+                </div>
+                <button class="btn btn-secondary mb-2" @click="newRunnerSponsorsFixed.push({name: '', amount: 0})">Add Sponsor with fixed amount</button>
 
 				<select v-model="newRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Select the class for the runner</option>
@@ -56,6 +65,8 @@
 				<p class="text-danger">{{errorText}}</p>
 				<p class="my-0">Edit the name of the runner:</p>
 				<input v-model="editRunnerName" class="mb-4" placeholder="Enter a name..."/><br>
+				<p class="my-0">Edit the chip index for the runner:</p>
+				<input v-model="editRunnerIndex" class="mb-4" type="number" placeholder="Enter the chip index..."/><br>
 
 				<!-- <p class="my-0">Enter an id for the new runner:</p> -->
 				<!-- <input v-model="newRunnerID" class="mb-4" placeholder="Enter an id..."/><br> -->
@@ -67,6 +78,13 @@
                     <button @click="editRunnerSponsors.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
                 </div>
                 <button class="btn btn-secondary mb-2" @click="editRunnerSponsors.push({name: '', amount: 0})">Add Sponsor</button>
+                <br>
+                <div class="mb-2" v-for="(s, idx) in editRunnerSponsorsFixed" :key="idx">
+				    <input v-model="s.name" type="text" placeholder="Enter a name..."/>
+				    <input v-model="s.amount" type="number" placeholder="Enter a value in €..."/>
+                    <button @click="editRunnerSponsorsFixed.splice(idx, 1)" class="btn btn-danger btn-sm">Remove</button><br>
+                </div>
+                <button class="btn btn-secondary mb-2" @click="editRunnerSponsorsFixed.push({name: '', amount: 0})">Add Sponsor with fixed amount</button>
 
 				<select v-model="editRunnerClass" class="form-select mb-4" style="width: auto; margin-left: 50%; transform: translateX(-50%); text-align: center;" aria-label="Select runner class">
 					<option selected>Edit the class for the runner</option>
@@ -148,11 +166,15 @@ export default {
 			newRunnerClass: "",
 			newClassName: "",
             newRunnerSponsors: [],
+            newRunnerSponsorsFixed: [],
+            newRunnerIndex: NaN,
 
 			editRunnerName: "",
 			editRunnerID: "",
 			editRunnerClass: "",
             editRunnerSponsors: [],
+            editRunnerSponsorsFixed: [],
+            editRunnerIndex: NaN,
 
 			deleteRunnerID: "",
 			deleteClassName: "",
@@ -208,27 +230,33 @@ export default {
 			this.connection?.send(JSON.stringify({header, data: d, login_hash: this.connection_password}))
 		},
 		createRunner() {
-			this.ws_send("add_runner", {name: this.newRunnerName, sponsors: this.newRunnerSponsors, id: this.newRunnerID, class_name: this.newRunnerClass})
+			this.ws_send("add_runner", {name: this.newRunnerName, sponsors: this.newRunnerSponsors, sponsors_fixed: this.newRunnerSponsorsFixed, id: this.newRunnerID, class_name: this.newRunnerClass, index: this.newRunnerIndex})
 			this.newRunnerClass = ""
 			this.newRunnerID = ""
 			this.newRunnerName = ""
             this.newRunnerSponsors = []
+            this.newRunnerSponsorsFixed = []
+            this.newRunnerIndex = NaN
 			this.openModal = "createRunner"
 		},
         openEditRunner(id) {
             let runner = this.runner_data.runners.find(el => el.id == id)
             this.editRunnerSponsors = runner.sponsors
+            this.editRunnerSponsorsFixed = runner.sponsors_fixed
             this.editRunnerID = id
             this.editRunnerName = runner.name
             this.editRunnerClass = runner.class_name
             this.editRunnerModal = true
+            this.editRunnerIndex = runner.index
         },
         editRunner() {
-			this.ws_send("edit_runner", {name: this.editRunnerName, sponsors: this.editRunnerSponsors, id: this.editRunnerID, class_name: this.editRunnerClass})
+			this.ws_send("edit_runner", {name: this.editRunnerName, sponsors: this.editRunnerSponsors, sponsors_fixed: this.editRunnerSponsorsFixed, id: this.editRunnerID, class_name: this.editRunnerClass, index: this.editRunnerIndex})
             this.editRunnerSponsors = []
+            this.editRunnerSponsorsFixed = []
             this.editRunnerID = ""
             this.editRunnerName = ""
             this.editRunnerClass = ""
+            this.editRunnerIndex = NaN
             this.openModal = "editRunner"
         },
 		createClass() {
@@ -269,6 +297,9 @@ export default {
                         for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
                             this.newRunnerSponsors.push({name: "a"+i, amount: Math.floor(Math.random() * 7)})
                         }
+                        for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
+                            this.newRunnerSponsorsFixed.push({name: "aa"+i, amount: Math.floor(Math.random() * 10)})
+                        }
 						this.createRunner()
 					}
 				}
@@ -287,6 +318,9 @@ export default {
 						this.newRunnerName = i + "" + ["a", "b", "c", "d"][j] + " - " + h
                         for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
                             this.newRunnerSponsors.push({name: "a"+i, amount: Math.floor(Math.random() * 7)})
+                        }
+                        for (let i = 0; i < Math.floor(Math.random() * 4)+1;  i++) {
+                            this.newRunnerSponsorsFixed.push({name: "aa"+i, amount: Math.floor(Math.random() * 10)})
                         }
 						this.createRunner()
 					}
@@ -312,7 +346,7 @@ export default {
             this.newRunnerID = id.id
             this.createRunnerModal = true
             console.log("nfc: " + id.id)
-			this.ws_send("runner_lap", {id: data.id, screen_name: this.$store.state.instanceName})
+			// this.ws_send("runner_lap", {id: data.id, screen_name: this.$store.state.instanceName})
         }
 	}
 }

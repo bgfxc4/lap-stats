@@ -1,7 +1,8 @@
 <template>
 	<li class="list-group-item d-flex justify-content-between align-items-start" :class="{'d-none': $props.soloClassName != null && $props.soloClassName != runner.class_name}">
 		<div class="ms-2 me-auto">
-			<div class="fw-bold">{{$props.runner.name}} ({{$props.runner.id}}, {{$props.runner.sponsors.reduce((a, b) => a+b.amount, 0)}}€) </div>
+            {{$props.runner.index}} <div class="fw-bold" style="display: inline-block"> {{$props.runner.name}} ({{$props.runner.id}}, {{$props.runner.sponsors.reduce((a, b) => a+b.amount, 0)}}€ / round, 
+                {{$props.runner.sponsors_fixed.reduce((a, b) => a+b.amount, 0)}}€ fixed) </div><br>
 			{{$props.runner.class_name}}
 		</div>
 

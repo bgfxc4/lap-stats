@@ -1,5 +1,5 @@
 <template>
-	<div id="HomeView" style="width: 100%; height: 100%; padding: 2%">
+	<div id="HomeView" style="width: 100%; height: 100%; padding: 2%; transition: background-color 0.2s">
         <div class="container" style="height: 100%">
             <div class="row" style="height: 100%;">
                 <div class="col-7" style="height: 100%">
@@ -14,6 +14,11 @@
                             <div class="col-7">
                                 <div class="panel" style="height: calc(100% - 1.5rem)">
                                     <p class="h3 lead text-start mx-3">Total stats</p>
+                                    <p class="mx-4 lead fw-bold">
+                                        Laps: {{totalLaps}}<br>
+                                        Distance: {{Math.round(totalLaps * 8) / 10}}km<br>
+                                        Money: {{totalMoney}}€
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -55,6 +60,7 @@
         </div>
 		
 		<start-counter :raceRunningTime="Math.round(raceRunningTime)"></start-counter>
+        <font-awesome-icon id="runnerLapCheck" icon="check" size="10x" style="position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 40vh; display: none" class="text-success"/>
         <nfc-ws ref="nfcHandler" @detected="nfcDetected"/>
 		<auth-modal @auth="authFinished"/>
 	</div>
@@ -78,7 +84,8 @@ export default {
 			errorText: null,
 			openModal: null, // stores name of open modal to close it when confirm_action gets send
 			raceRunningTime: NaN,
-
+            totalLaps: 0,
+            totalMoney: 0,
             scans: [],
 		}
 	},
@@ -91,6 +98,14 @@ export default {
 					this.runnerDataToShowRunners()
 					if (this.runner_data.start_time != null)
 						this.startRaceTimeCounter()
+                    this.totalLaps = 0
+                    this.totalMoney = 0
+                    data.data.runners.forEach(el => {
+                        this.totalLaps += el.laps.length
+                        this.totalMoney += el.sponsors.reduce((a, b) => a + b.amount, 0) * el.laps.length
+                        console.log(el.sponsors, el.sponsors.reduce((a, b) => a + b.amount), 0)
+                        this.totalMoney += el.sponsors_fixed.reduce((a, b) => a + b.amount, 0)
+                    })
 					break
 				case "confirm_action":
 					$(`#${this.openModal}ModalButton`).click()
@@ -134,6 +149,8 @@ export default {
 		},
 		addLapToRunner(id, timestamp, screen_name) {
 			let rIdx = this.runner_data.runners.findIndex(el => el.id == id)
+            this.totalLaps += 1
+            this.totalMoney += this.runner_data.runners[rIdx].sponsors.reduce((a, b) => a + b.amount, 0)
 			let lapTime = timestamp - (this.runner_data.runners[rIdx].last_lap_timestamp || this.runner_data.start_time)
 			this.runner_data.runners[rIdx].laps.push(lapTime)
 			this.runner_data.runners[rIdx].last_lap_timestamp = timestamp
@@ -146,6 +163,13 @@ export default {
                     lapTime,
                     name: this.runner_data.runners[rIdx].name,
                 })
+                $("#HomeView").addClass("bg-success")
+                $("#runnerLapCheck").show("slow")
+                setTimeout(() => {
+                    $("#HomeView").removeClass("bg-success")
+                    $("#runnerLapCheck").hide("slow")
+                }, 200)
+                
             }
 		},
 		runnerDataToShowRunners() {

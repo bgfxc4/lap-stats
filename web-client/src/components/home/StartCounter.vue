@@ -1,5 +1,5 @@
 <template>
-	<div v-show="$props.raceRunningTime != NaN && $props.raceRunningTime < 1" id="start-counter">
+	<div v-show="$props.raceRunningTime != NaN && $props.raceRunningTime < 1" id="start-counter" class="bg-success" style="padding: 39px; border-radius: 25px">
         <div id="text">
             Countdown
         </div>
